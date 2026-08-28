@@ -3,11 +3,8 @@ let trucks = [];
 let repairs = [];
 let revenues = [];
 let activeTruckId = null;
-
-// Calendar Navigation State
 let calDate = new Date();
 
-// Helper: Format Currency in Indian Rupees (en-IN)
 function formatRupees(amount) {
   return '₹' + Number(amount || 0).toLocaleString('en-IN', {
     maximumFractionDigits: 2,
@@ -15,13 +12,11 @@ function formatRupees(amount) {
   });
 }
 
-// Initialize App on DOM Load
 document.addEventListener('DOMContentLoaded', () => {
   initTheme();
-  initSupabaseSession();
+  initSupabaseAuthListener();
 });
 
-// Theme Engine Toggle
 function initTheme() {
   const toggleBtn = document.getElementById('theme-toggle-btn');
   const savedTheme = localStorage.getItem('theme') || 'dark';
@@ -37,91 +32,120 @@ function initTheme() {
   }
 }
 
-// Supabase Connection & Data Bootstrapping
-async function initSupabaseSession() {
-  if (typeof supabaseClient !== 'undefined' && supabaseClient) {
-    document.getElementById('sidebar-user').innerText = 'Supabase Connected';
-    await Promise.all([fetchTrucks(), fetchRepairs(), fetchRevenues()]);
+// Supabase Authentication Handling
+function initSupabaseAuthListener() {
+  if (typeof supabaseClient === 'undefined') {
+    alert('Supabase client not loaded. Please check supabase-config.js');
+    return;
+  }
+
+  supabaseClient.auth.onAuthStateChange((event, session) => {
+    if (session) {
+      document.getElementById('auth-screen').classList.add('hidden');
+      document.getElementById('app-layout').classList.remove('hidden');
+      document.getElementById('sidebar-user').innerText = session.user.email;
+      loadSupabaseData();
+    } else {
+      document.getElementById('auth-screen').classList.remove('hidden');
+      document.getElementById('app-layout').classList.add('hidden');
+    }
+  });
+}
+
+async function handleAuthSubmit(e) {
+  e.preventDefault();
+  const email = document.getElementById('auth-email').value.trim();
+  const password = document.getElementById('auth-password').value;
+  const errorDiv = document.getElementById('auth-error');
+  errorDiv.innerText = '';
+
+  const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
+  if (error) errorDiv.innerText = error.message;
+}
+
+async function handleSignUp() {
+  const email = document.getElementById('auth-email').value.trim();
+  const password = document.getElementById('auth-password').value;
+  const errorDiv = document.getElementById('auth-error');
+  errorDiv.innerText = '';
+
+  if (!email || !password) {
+    errorDiv.innerText = 'Please enter an email and password to sign up.';
+    return;
+  }
+
+  const { error } = await supabaseClient.auth.signUp({ email, password });
+  if (error) {
+    errorDiv.innerText = error.message;
   } else {
-    document.getElementById('sidebar-user').innerText = 'Demo Mode';
-    loadDemoData();
+    showToast('Account created! If confirmation is required, check your email.', 'success');
   }
 }
 
-// Fallback Demo Data
-function loadDemoData() {
-  trucks = [
-    { id: '1', plate: 'KA-04-MN-3001', model: 'Volvo FH16', year: 2023, ownerPhone: '+91 98765-43210', driverPhone: '+91 98765-12345' },
-    { id: '2', plate: 'MH-12-PQ-8921', model: 'Tata Signa 5530', year: 2022, ownerPhone: '+91 98123-45678', driverPhone: '+91 98987-65432' }
-  ];
-  repairs = [
-    { id: 'r1', truckId: '1', date: '2026-08-05', description: 'Engine Oil & Filter Service', materials: '15W-40 Synthetic Oil 10L, Oil Filter', cost: 12500.00, status: 'completed', photoUrl: '' },
-    { id: 'r2', truckId: '1', date: '2026-08-15', description: 'Front Heavy Duty Brake Shoe', materials: '2x Brake Lining Set, Drum Servicing', cost: 28000.00, status: 'completed', photoUrl: '' },
-    { id: 'r3', truckId: '2', date: '2026-08-20', description: 'Clutch Assembly Replacement', materials: 'Clutch Plate 395mm, Release Bearing', cost: 34500.00, status: 'in-progress', photoUrl: '' }
-  ];
-  revenues = [
-    { id: 'rev1', date: '2026-08-05', amount: 85000.00, truckId: '1', notes: 'Bengaluru to Mumbai freight' },
-    { id: 'rev2', date: '2026-08-15', amount: 42000.00, truckId: '1', notes: 'Local logistics haul' },
-    { id: 'rev3', date: '2026-08-20', amount: 110000.00, truckId: '2', notes: 'Industrial machinery transport' }
-  ];
+async function handleLogout() {
+  await supabaseClient.auth.signOut();
+  location.reload();
+}
+
+// Fetch Real Data from Supabase
+async function loadSupabaseData() {
+  await Promise.all([fetchTrucks(), fetchRepairs(), fetchRevenues()]);
+}
+
+async function fetchTrucks() {
+  const { data, error } = await supabaseClient.from('trucks').select('*').order('created_at', { ascending: false });
+  if (error) {
+    showToast('Error fetching trucks: ' + error.message, 'error');
+    return;
+  }
+  trucks = data.map(t => ({
+    id: t.id,
+    plate: t.plate,
+    model: t.model,
+    year: t.year,
+    ownerPhone: t.owner_phone,
+    driverPhone: t.driver_phone
+  }));
   renderTrucks(trucks);
-  renderCalendar();
   populateTruckDropdowns();
 }
 
-// Fetch Data Functions from Supabase
-async function fetchTrucks() {
-  if (typeof supabaseClient === 'undefined') return;
-  const { data, error } = await supabaseClient.from('trucks').select('*').order('created_at', { ascending: false });
-  if (!error && data) {
-    trucks = data.map(t => ({
-      id: t.id,
-      plate: t.plate,
-      model: t.model,
-      year: t.year,
-      ownerPhone: t.owner_phone,
-      driverPhone: t.driver_phone
-    }));
-    renderTrucks(trucks);
-    populateTruckDropdowns();
-  }
-}
-
 async function fetchRepairs() {
-  if (typeof supabaseClient === 'undefined') return;
   const { data, error } = await supabaseClient.from('repairs').select('*').order('date', { ascending: false });
-  if (!error && data) {
-    repairs = data.map(r => ({
-      id: r.id,
-      truckId: r.truck_id,
-      date: r.date,
-      description: r.description,
-      materials: r.materials,
-      cost: parseFloat(r.cost),
-      status: r.status,
-      photoUrl: r.photo_url
-    }));
-    if (activeTruckId) fetchRepairsForTruck(activeTruckId);
-    renderCalendar();
+  if (error) {
+    showToast('Error fetching repairs: ' + error.message, 'error');
+    return;
   }
+  repairs = data.map(r => ({
+    id: r.id,
+    truckId: r.truck_id,
+    date: r.date,
+    description: r.description,
+    materials: r.materials,
+    cost: parseFloat(r.cost),
+    status: r.status,
+    photoUrl: r.photo_url
+  }));
+  if (activeTruckId) fetchRepairsForTruck(activeTruckId);
+  renderCalendar();
 }
 
 async function fetchRevenues() {
-  if (typeof supabaseClient === 'undefined') return;
   const { data, error } = await supabaseClient.from('revenues').select('*').order('date', { ascending: false });
-  if (!error && data) {
-    revenues = data.map(r => ({
-      id: r.id,
-      date: r.date,
-      amount: parseFloat(r.amount),
-      truckId: r.truck_id,
-      notes: r.notes
-    }));
-    renderCalendar();
+  if (error) {
+    showToast('Error fetching revenues: ' + error.message, 'error');
+    return;
   }
+  revenues = data.map(r => ({
+    id: r.id,
+    date: r.date,
+    amount: parseFloat(r.amount),
+    truckId: r.truck_id,
+    notes: r.notes
+  }));
+  renderCalendar();
 }
 
-// Populate Select Truck Dropdowns
 function populateTruckDropdowns() {
   const select = document.getElementById('revenue-truck');
   if (!select) return;
@@ -129,13 +153,12 @@ function populateTruckDropdowns() {
     trucks.map(t => `<option value="${t.id}">${t.plate} (${t.model || 'Truck'})</option>`).join('');
 }
 
-// Render Fleet Grid
 function renderTrucks(data) {
   const container = document.getElementById('trucks-container');
   if (!container) return;
 
   if (data.length === 0) {
-    container.innerHTML = `<div class="empty-state">No trucks registered. Click "+ Add Truck" to get started.</div>`;
+    container.innerHTML = `<div class="empty-state">No trucks registered in your database. Click "+ Add Truck".</div>`;
     return;
   }
 
@@ -160,7 +183,6 @@ function renderTrucks(data) {
   `).join('');
 }
 
-// Filter Search
 function filterTrucks() {
   const query = document.getElementById('search-plate').value.toLowerCase();
   const filtered = trucks.filter(t => 
@@ -172,7 +194,6 @@ function filterTrucks() {
   renderTrucks(filtered);
 }
 
-// View Switching Logic
 function switchView(viewName) {
   document.getElementById('view-fleet').classList.add('hidden');
   document.getElementById('view-truck-detail').classList.add('hidden');
@@ -198,7 +219,6 @@ function switchView(viewName) {
   }
 }
 
-// Truck Detail & Repairs View
 function openTruckDetail(truckId) {
   activeTruckId = truckId;
   const truck = trucks.find(t => t.id === truckId);
@@ -220,13 +240,11 @@ function editCurrentTruck() {
   if (activeTruckId) openAddTruckModal(activeTruckId);
 }
 
-// Filter Repairs for Selected Truck
 function fetchRepairsForTruck(truckId) {
   const filtered = repairs.filter(r => r.truckId === truckId);
   renderRepairsTree(filtered);
 }
 
-// Render Repair History Cards
 function renderRepairsTree(repairList) {
   const container = document.getElementById('repairs-tree-container');
   if (!container) return;
@@ -266,7 +284,6 @@ function renderRepairsTree(repairList) {
   `).join('');
 }
 
-// Modal Operations
 function openAddTruckModal(truckId = null) {
   const modal = document.getElementById('modal-add-truck');
   const title = document.getElementById('modal-truck-title');
@@ -320,24 +337,35 @@ function openAddRevenueModal(dateStr = null, revenueId = null) {
   const modal = document.getElementById('modal-add-revenue');
   const title = document.getElementById('modal-revenue-title');
   const editId = document.getElementById('revenue-edit-id');
+  const deleteBtn = document.getElementById('btn-delete-revenue');
 
   if (revenueId) {
     const rev = revenues.find(r => r.id === revenueId);
     if (rev) {
-      title.innerText = "Edit Daily Revenue";
+      title.innerText = "Edit / Delete Revenue Entry";
       editId.value = rev.id;
       document.getElementById('revenue-date').value = rev.date;
       document.getElementById('revenue-amount').value = rev.amount;
       document.getElementById('revenue-truck').value = rev.truckId || '';
       document.getElementById('revenue-notes').value = rev.notes || '';
+      if (deleteBtn) deleteBtn.classList.remove('hidden');
     }
   } else {
     title.innerText = "Log Daily Revenue";
     editId.value = "";
     document.getElementById('form-add-revenue').reset();
     document.getElementById('revenue-date').value = dateStr || new Date().toISOString().split('T')[0];
+    if (deleteBtn) deleteBtn.classList.add('hidden');
   }
   modal.classList.remove('hidden');
+}
+
+function handleDeleteRevenueFromModal() {
+  const id = document.getElementById('revenue-edit-id').value;
+  if (id) {
+    deleteRevenue(id);
+    closeModal('modal-add-revenue');
+  }
 }
 
 function closeModal(modalId) {
@@ -349,10 +377,9 @@ function openPhotoModal(src) {
   document.getElementById('modal-photo').classList.remove('hidden');
 }
 
-// Truck CRUD
 async function handleAddTruck(e) {
   e.preventDefault();
-  const id = document.getElementById('truck-edit-id').value || Date.now().toString();
+  const id = document.getElementById('truck-edit-id').value || crypto.randomUUID();
   const payload = {
     id,
     plate: document.getElementById('truck-plate').value.trim(),
@@ -362,57 +389,32 @@ async function handleAddTruck(e) {
     driver_phone: document.getElementById('truck-driver-phone').value.trim() || null
   };
 
-  if (typeof supabaseClient !== 'undefined') {
-    const { error } = await supabaseClient.from('trucks').upsert([payload]);
-    if (error) {
-      showToast('Failed to save truck: ' + error.message, 'error');
-      return;
-    }
-    await fetchTrucks();
-  } else {
-    const idx = trucks.findIndex(t => t.id === id);
-    const formatted = {
-      id,
-      plate: payload.plate,
-      model: payload.model,
-      year: payload.year,
-      ownerPhone: payload.owner_phone,
-      driverPhone: payload.driver_phone
-    };
-    if (idx !== -1) trucks[idx] = formatted;
-    else trucks.unshift(formatted);
-    renderTrucks(trucks);
-    populateTruckDropdowns();
+  const { error } = await supabaseClient.from('trucks').upsert([payload]);
+  if (error) {
+    showToast('Failed to save truck: ' + error.message, 'error');
+    return;
   }
-
-  showToast('Truck saved successfully!', 'success');
+  await fetchTrucks();
+  showToast('Truck saved to database!', 'success');
   closeModal('modal-add-truck');
   if (activeTruckId === id) openTruckDetail(activeTruckId);
 }
 
 async function deleteTruck(truckId) {
-  if (!confirm('Are you sure you want to delete this truck and its history?')) return;
-  if (typeof supabaseClient !== 'undefined') {
-    const { error } = await supabaseClient.from('trucks').delete().eq('id', truckId);
-    if (error) {
-      showToast('Failed to delete truck: ' + error.message, 'error');
-      return;
-    }
-    await fetchTrucks();
-  } else {
-    trucks = trucks.filter(t => t.id !== truckId);
-    repairs = repairs.filter(r => r.truckId !== truckId);
-    renderTrucks(trucks);
-    populateTruckDropdowns();
+  if (!confirm('Are you sure you want to delete this truck from your database?')) return;
+  const { error } = await supabaseClient.from('trucks').delete().eq('id', truckId);
+  if (error) {
+    showToast('Failed to delete truck: ' + error.message, 'error');
+    return;
   }
+  await fetchTrucks();
   if (activeTruckId === truckId) switchView('fleet');
   showToast('Truck deleted.', 'error');
 }
 
-// Repair CRUD
 async function handleAddRepair(e) {
   e.preventDefault();
-  const id = document.getElementById('repair-edit-id').value || Date.now().toString();
+  const id = document.getElementById('repair-edit-id').value || crypto.randomUUID();
   const date = document.getElementById('repair-date').value;
   const description = document.getElementById('repair-desc').value.trim();
   const materials = document.getElementById('repair-materials').value.trim() || null;
@@ -432,23 +434,13 @@ async function handleAddRepair(e) {
     };
     if (photoBase64) payload.photo_url = photoBase64;
 
-    if (typeof supabaseClient !== 'undefined') {
-      const { error } = await supabaseClient.from('repairs').upsert([payload]);
-      if (error) {
-        showToast('Failed to save repair: ' + error.message, 'error');
-        return;
-      }
-      await fetchRepairs();
-    } else {
-      const idx = repairs.findIndex(r => r.id === id);
-      const repObj = { id, truckId: activeTruckId, date, description, materials, cost, status, photoUrl: photoBase64 || (repairs[idx]?.photoUrl || '') };
-      if (idx !== -1) repairs[idx] = repObj;
-      else repairs.unshift(repObj);
-      fetchRepairsForTruck(activeTruckId);
-      renderCalendar();
+    const { error } = await supabaseClient.from('repairs').upsert([payload]);
+    if (error) {
+      showToast('Failed to save repair: ' + error.message, 'error');
+      return;
     }
-
-    showToast('Repair job logged!', 'success');
+    await fetchRepairs();
+    showToast('Repair job saved to database!', 'success');
     closeModal('modal-add-repair');
   };
 
@@ -465,26 +457,19 @@ async function handleAddRepair(e) {
 }
 
 async function deleteRepair(repairId) {
-  if (!confirm('Are you sure you want to delete this repair record?')) return;
-  if (typeof supabaseClient !== 'undefined') {
-    const { error } = await supabaseClient.from('repairs').delete().eq('id', repairId);
-    if (error) {
-      showToast('Failed to delete repair: ' + error.message, 'error');
-      return;
-    }
-    await fetchRepairs();
-  } else {
-    repairs = repairs.filter(r => r.id !== repairId);
-    fetchRepairsForTruck(activeTruckId);
-    renderCalendar();
+  if (!confirm('Delete this repair record from database?')) return;
+  const { error } = await supabaseClient.from('repairs').delete().eq('id', repairId);
+  if (error) {
+    showToast('Failed to delete repair: ' + error.message, 'error');
+    return;
   }
+  await fetchRepairs();
   showToast('Repair entry deleted.', 'error');
 }
 
-// Revenue CRUD
 async function handleAddRevenue(e) {
   e.preventDefault();
-  const id = document.getElementById('revenue-edit-id').value || Date.now().toString();
+  const id = document.getElementById('revenue-edit-id').value || crypto.randomUUID();
   const date = document.getElementById('revenue-date').value;
   const amount = parseFloat(document.getElementById('revenue-amount').value);
   const truckId = document.getElementById('revenue-truck').value || null;
@@ -492,42 +477,27 @@ async function handleAddRevenue(e) {
 
   const payload = { id, date, amount, truck_id: truckId, notes };
 
-  if (typeof supabaseClient !== 'undefined') {
-    const { error } = await supabaseClient.from('revenues').upsert([payload]);
-    if (error) {
-      showToast('Failed to save revenue: ' + error.message, 'error');
-      return;
-    }
-    await fetchRevenues();
-  } else {
-    const idx = revenues.findIndex(r => r.id === id);
-    const revObj = { id, date, amount, truckId, notes };
-    if (idx !== -1) revenues[idx] = revObj;
-    else revenues.unshift(revObj);
-    renderCalendar();
+  const { error } = await supabaseClient.from('revenues').upsert([payload]);
+  if (error) {
+    showToast('Failed to save revenue: ' + error.message, 'error');
+    return;
   }
-
-  showToast('Revenue record updated!', 'success');
+  await fetchRevenues();
+  showToast('Revenue updated in database!', 'success');
   closeModal('modal-add-revenue');
 }
 
 async function deleteRevenue(revenueId) {
-  if (!confirm('Delete this revenue entry?')) return;
-  if (typeof supabaseClient !== 'undefined') {
-    const { error } = await supabaseClient.from('revenues').delete().eq('id', revenueId);
-    if (error) {
-      showToast('Failed to delete revenue: ' + error.message, 'error');
-      return;
-    }
-    await fetchRevenues();
-  } else {
-    revenues = revenues.filter(r => r.id !== revenueId);
-    renderCalendar();
+  if (!confirm('Delete this revenue entry from Supabase?')) return;
+  const { error } = await supabaseClient.from('revenues').delete().eq('id', revenueId);
+  if (error) {
+    showToast('Failed to delete revenue: ' + error.message, 'error');
+    return;
   }
+  await fetchRevenues();
   showToast('Revenue deleted.', 'error');
 }
 
-// Calendar Engine & Profit/Loss Calculation
 function changeMonth(delta) {
   calDate.setMonth(calDate.getMonth() + delta);
   renderCalendar();
@@ -552,14 +522,12 @@ function renderCalendar() {
   let mTotalRevenue = 0;
   let mTotalExpenses = 0;
 
-  // Blank slots for days before start of month
   for (let i = 0; i < firstDay; i++) {
     const emptyCell = document.createElement('div');
     emptyCell.className = 'calendar-day empty';
     container.appendChild(emptyCell);
   }
 
-  // Generate calendar days
   for (let day = 1; day <= daysInMonth; day++) {
     const monthStr = String(month + 1).padStart(2, '0');
     const dayStr = String(day).padStart(2, '0');
@@ -581,13 +549,19 @@ function renderCalendar() {
     }
 
     let statsHtml = '';
-    if (dayRevTotal > 0) {
-      statsHtml += `<div class="day-stat rev">+₹${dayRevTotal.toLocaleString('en-IN')}</div>`;
-    }
+
+    dayRevenues.forEach(r => {
+      statsHtml += `
+        <div class="day-stat rev" style="cursor: pointer;" onclick="openAddRevenueModal('${dateFormatted}', '${r.id}')" title="Click to edit/delete revenue">
+          +₹${Number(r.amount).toLocaleString('en-IN')} ✏️
+        </div>
+      `;
+    });
+
     if (dayExpTotal > 0) {
       statsHtml += `<div class="day-stat exp">-₹${dayExpTotal.toLocaleString('en-IN')}</div>`;
     }
-    // Only display net calculation line if BOTH revenue and expenses exist on the same day
+
     if (dayRevTotal > 0 && dayExpTotal > 0) {
       statsHtml += `<div class="day-stat net ${dayNet >= 0 ? 'text-green' : 'text-red'}">Net ${dayNet >= 0 ? '+' : ''}₹${Math.abs(dayNet).toLocaleString('en-IN')}</div>`;
     }
@@ -607,7 +581,6 @@ function renderCalendar() {
     container.appendChild(cell);
   }
 
-  // Update Summary Banners
   const netPnL = mTotalRevenue - mTotalExpenses;
   document.getElementById('month-total-revenue').innerText = formatRupees(mTotalRevenue);
   document.getElementById('month-total-expenses').innerText = formatRupees(mTotalExpenses);
@@ -617,7 +590,6 @@ function renderCalendar() {
   netElem.className = `val ${netPnL >= 0 ? 'text-green' : 'text-red'}`;
 }
 
-// Toast Notifications Utility
 function showToast(message, type = 'success') {
   const container = document.getElementById('toast-container');
   if (!container) return;
@@ -628,14 +600,4 @@ function showToast(message, type = 'success') {
 
   container.appendChild(toast);
   setTimeout(() => toast.remove(), 3000);
-}
-
-// Sign out handler
-async function handleLogout() {
-  if (typeof supabaseClient !== 'undefined' && supabaseClient.auth) {
-    await supabaseClient.auth.signOut();
-    location.reload();
-  } else {
-    showToast('Signed out demo mode.', 'success');
-  }
 }
