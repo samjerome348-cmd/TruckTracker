@@ -9,16 +9,14 @@
 </script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=IBM+Plex+Mono:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/style.css">
+<link rel="stylesheet" href="style.css">
 </head>
 <body>
-
 <div class="theme-toggle-wrap">
   <button class="theme-toggle" id="theme-toggle" aria-label="Toggle light and dark theme">
     <span class="knob"></span>
   </button>
 </div>
-
 <div class="auth-shell">
   <div class="auth-card">
     <div class="auth-brand">
@@ -28,7 +26,6 @@
         <div class="sub">Repairs · Materials · Expenses</div>
       </div>
     </div>
-
     <!-- LOG IN -->
     <div id="view-login">
       <div id="login-msg" class="msg"></div>
@@ -48,7 +45,6 @@
         <button id="link-to-signup">Create an account</button>
       </div>
     </div>
-
     <!-- SIGN UP -->
     <div id="view-signup" class="hidden">
       <div id="signup-msg" class="msg"></div>
@@ -73,7 +69,6 @@
         <button id="link-to-login-1">Back to log in</button>
       </div>
     </div>
-
     <!-- FORGOT PASSWORD -->
     <div id="view-forgot" class="hidden">
       <div id="forgot-msg" class="msg"></div>
@@ -92,13 +87,11 @@
         <button id="link-to-login-2">Back to log in</button>
       </div>
     </div>
-
   </div>
 </div>
-
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="js/config.js"></script>
-<script src="js/theme.js"></script>
-<script src="js/auth.js"></script>
+<script src="config.js"></script>
+<script src="theme.js"></script>
+<script src="auth.js"></script>
 </body>
 </html>
