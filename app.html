@@ -27,6 +27,7 @@
       <span>Truck Tracker</span>
     </div>
     <button class="nav-item active" id="nav-trucks">🚚&nbsp; Trucks</button>
+    <button class="nav-item" id="nav-calendar">📅&nbsp; Calendar</button>
     <div class="sidebar-footer">
       <div class="sidebar-user" id="sidebar-user">...</div>
       <button class="btn btn-ghost btn-sm btn-block" id="btn-logout">Log out</button>
@@ -45,14 +46,57 @@
         <div class="search-slot">
           <input type="text" id="search-plate" placeholder="SEARCH PLATE NUMBER">
         </div>
+        <div class="filter-slot">
+          <select id="sort-trucks" class="select-input">
+            <option value="plate-asc">Plate (A-Z)</option>
+            <option value="recent">Recently Added</option>
+            <option value="revenue-desc">Highest Total Spend</option>
+          </select>
+        </div>
         <button class="btn btn-amber btn-sm" style="width:auto;" id="btn-add-truck">+ Add truck</button>
       </div>
 
       <div id="trucks-grid" class="grid"></div>
       <div id="trucks-empty" class="empty-state hidden">
         <div class="plate plate-lg">?? ??</div>
-        <p>No trucks yet. Add your first one to get started.</p>
+        <p>No trucks found matching your criteria.</p>
       </div>
+    </div>
+
+    <!-- ===== CALENDAR VIEW ===== -->
+    <div id="view-calendar" class="hidden">
+      <div class="topbar">
+        <div>
+          <h1 class="page-title">Repair Calendar</h1>
+          <p class="page-sub">Track daily maintenance activities and monthly revenue totals.</p>
+        </div>
+        <div class="calendar-controls">
+          <button class="btn btn-ghost btn-sm" id="btn-cal-prev">&larr; Prev</button>
+          <span id="cal-month-label" class="cal-month-title">Month Year</span>
+          <button class="btn btn-ghost btn-sm" id="btn-cal-next">Next &rarr;</button>
+          <button class="btn btn-ghost btn-sm" id="btn-cal-today">Today</button>
+        </div>
+      </div>
+
+      <div class="metrics-row card" style="margin-bottom:20px;">
+        <div class="metric-box">
+          <span class="metric-label">Monthly Revenue</span>
+          <span class="metric-value" id="cal-total-revenue">$0.00</span>
+        </div>
+        <div class="metric-box">
+          <span class="metric-label">Jobs Logged</span>
+          <span class="metric-value" id="cal-total-jobs">0</span>
+        </div>
+        <div class="metric-box">
+          <span class="metric-label">Active Serviced Trucks</span>
+          <span class="metric-value" id="cal-total-trucks">0</span>
+        </div>
+      </div>
+
+      <div class="calendar-grid-header">
+        <div>Sun</div><div>Mon</div><div>Tue</div><div>Wed</div><div>Thu</div><div>Fri</div><div>Sat</div>
+      </div>
+      <div id="calendar-days-grid" class="calendar-grid"></div>
     </div>
 
     <!-- ===== TRUCK DETAIL VIEW ===== -->
@@ -94,6 +138,7 @@
     <h3 id="modal-truck-title">Add truck</h3>
     <div id="modal-truck-msg" class="msg"></div>
     <form id="form-truck">
+      <input type="hidden" id="f-truck-id">
       <div class="field">
         <label>Plate number</label>
         <input type="text" id="f-plate" required style="text-transform:uppercase;">
@@ -123,13 +168,14 @@
   </div>
 </div>
 
-<!-- ===== MODAL: Add Repair Job ===== -->
+<!-- ===== MODAL: Add / Edit Repair Job ===== -->
 <div class="modal-overlay hidden" id="modal-repair">
   <div class="modal">
     <button class="modal-close" data-close="modal-repair">&times;</button>
-    <h3>New repair job</h3>
+    <h3 id="modal-repair-title">New repair job</h3>
     <div id="modal-repair-msg" class="msg"></div>
     <form id="form-repair">
+      <input type="hidden" id="f-repair-id">
       <div class="field">
         <label>Date</label>
         <input type="date" id="f-repair-date" required>
@@ -138,7 +184,7 @@
         <label>Description</label>
         <input type="text" id="f-repair-desc" placeholder="e.g. Brake pad replacement">
       </div>
-      <button type="submit" class="btn btn-primary">Create repair job</button>
+      <button type="submit" class="btn btn-primary">Save repair job</button>
     </form>
   </div>
 </div>
@@ -189,11 +235,20 @@
   </div>
 </div>
 
+<!-- ===== MODAL: Calendar Day Detail ===== -->
+<div class="modal-overlay hidden" id="modal-day-detail">
+  <div class="modal" style="max-width:540px;">
+    <button class="modal-close" data-close="modal-day-detail">&times;</button>
+    <h3 id="modal-day-title">Repairs on Date</h3>
+    <div id="day-repairs-list" class="day-repairs-container"></div>
+  </div>
+</div>
+
 <!-- ===== MODAL: Photo viewer ===== -->
 <div class="modal-overlay hidden" id="modal-photo">
   <div class="modal" style="max-width:560px;text-align:center;">
     <button class="modal-close" data-close="modal-photo">&times;</button>
-    <img id="photo-viewer-img" style="max-width:100%;border-radius:8px;margin-top:10px;">
+    <img id="photo-viewer-img" style="max-width:100%;border-radius:8px;margin-top:10px;" alt="Material detail photo">
   </div>
 </div>
 
