@@ -4,6 +4,7 @@
 let currentUser = null;
 let allTrucks = [];
 let currentTruckId = null;
+let analyticsChart = null;
 
 // ============================================================
 // Boot
@@ -59,6 +60,26 @@ function escapeHtml(str) {
   return div.innerHTML;
 }
 
+function switchView(viewId) {
+  ['view-trucks', 'view-truck-detail', 'view-analytics', 'view-reminders'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.classList.add('hidden');
+  });
+  const target = document.getElementById(viewId);
+  if (target) target.classList.remove('hidden');
+
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  if (viewId === 'view-trucks') document.getElementById('nav-trucks')?.classList.add('active');
+  if (viewId === 'view-analytics') {
+    document.getElementById('nav-analytics')?.classList.add('active');
+    loadAnalytics();
+  }
+  if (viewId === 'view-reminders') {
+    document.getElementById('nav-reminders')?.classList.add('active');
+    loadReminders();
+  }
+}
+
 // ============================================================
 // Load & Render Trucks
 // ============================================================
@@ -102,7 +123,7 @@ function renderTrucks(trucks) {
 }
 
 // ============================================================
-// Truck Detail View
+// Truck Detail View & Nested Repairs
 // ============================================================
 async function openTruckDetail(truckId) {
   currentTruckId = truckId;
@@ -115,28 +136,22 @@ async function openTruckDetail(truckId) {
   document.getElementById('detail-driver-name').textContent = truck.driver_name || '—';
   document.getElementById('detail-driver-phone').textContent = truck.driver_phone || '';
 
-  document.getElementById('view-trucks').classList.add('hidden');
-  document.getElementById('view-truck-detail').classList.remove('hidden');
-
+  switchView('view-truck-detail');
   await loadRepairs(truckId);
 }
 
 function backToTrucks() {
   currentTruckId = null;
-  document.getElementById('view-truck-detail').classList.add('hidden');
-  document.getElementById('view-trucks').classList.remove('hidden');
+  switchView('view-trucks');
   loadTrucks();
 }
 
-// ============================================================
-// Repairs, Materials, Labour
-// ============================================================
 async function loadRepairs(truckId) {
-  const list = document.getElementById('repairs-list');
+  const nestedContainer = document.getElementById('repairs-nested-container');
   const empty = document.getElementById('repairs-empty');
-  if (!list || !empty) return;
+  if (!nestedContainer || !empty) return;
 
-  list.innerHTML = '<p style="color:var(--ink-soft);font-size:0.85rem;">Loading...</p>';
+  nestedContainer.innerHTML = '<p style="color:var(--ink-soft);font-size:0.85rem;">Loading...</p>';
 
   const { data: repairs, error } = await supabaseClient
     .from('repairs')
@@ -144,105 +159,272 @@ async function loadRepairs(truckId) {
     .eq('truck_id', truckId)
     .order('repair_date', { ascending: false });
 
-  if (error) { toast('Could not load repairs: ' + error.message, 'error'); list.innerHTML = ''; return; }
+  if (error) { toast('Could not load repairs: ' + error.message, 'error'); nestedContainer.innerHTML = ''; return; }
 
   if (!repairs || repairs.length === 0) {
-    list.innerHTML = '';
+    nestedContainer.innerHTML = '';
     empty.classList.remove('hidden');
     return;
   }
   empty.classList.add('hidden');
 
   const repairIds = repairs.map(r => r.id);
-
   const [{ data: materials }, { data: labourRows }] = await Promise.all([
     supabaseClient.from('materials').select('*').in('repair_id', repairIds),
     supabaseClient.from('labour').select('*').in('repair_id', repairIds),
   ]);
 
-  list.innerHTML = '';
+  // Group Repairs by Year -> Month -> Day
+  const grouped = {};
   for (const r of repairs) {
-    const mats = (materials || []).filter(m => m.repair_id === r.id);
-    const labs = (labourRows || []).filter(l => l.repair_id === r.id);
-    const matTotal = mats.reduce((s, m) => s + (Number(m.cost) || 0), 0);
-    const labTotal = labs.reduce((s, l) => s + (Number(l.charge) || 0), 0);
-    const grand = matTotal + labTotal;
+    const d = new Date(r.repair_date);
+    const year = d.getFullYear() || 'Unknown Year';
+    const month = d.toLocaleString('default', { month: 'Long' }) || 'Unknown Month';
+    const day = d.getDate() || 'Unknown Day';
 
-    const row = document.createElement('div');
-    row.className = 'job-row';
+    if (!grouped[year]) grouped[year] = {};
+    if (!grouped[year][month]) grouped[year][month] = {};
+    if (!grouped[year][month][day]) grouped[year][month][day] = [];
 
-    let lineItemsHtml = '';
-    for (const m of mats) {
-      let imgTag = '';
-      if (m.photo_path) {
-        const { data: signed } = await supabaseClient.storage
-          .from('material-photos')
-          .createSignedUrl(m.photo_path, 3600);
-        if (signed?.signedUrl) {
-          imgTag = `<img src="${signed.signedUrl}" data-full="${signed.signedUrl}" class="view-photo">`;
+    grouped[year][month][day].push(r);
+  }
+
+  nestedContainer.innerHTML = '';
+
+  // Render Nested Structure
+  for (const year of Object.keys(grouped)) {
+    const yearBlock = document.createElement('div');
+    yearBlock.className = 'tree-year-block';
+    yearBlock.innerHTML = `<h3 class="tree-year-heading">📅 ${year}</h3>`;
+
+    for (const month of Object.keys(grouped[year])) {
+      const monthBlock = document.createElement('div');
+      monthBlock.className = 'tree-month-block';
+      monthBlock.innerHTML = `<h4 class="tree-month-heading">🗓️ ${month}</h4>`;
+
+      for (const day of Object.keys(grouped[year][month])) {
+        const dayBlock = document.createElement('div');
+        dayBlock.className = 'tree-day-block';
+        dayBlock.innerHTML = `<h5 class="tree-day-heading">Day ${day}</h5>`;
+
+        const dayRepairs = grouped[year][month][day];
+        for (const r of dayRepairs) {
+          const mats = (materials || []).filter(m => m.repair_id === r.id);
+          const labs = (labourRows || []).filter(l => l.repair_id === r.id);
+          const matTotal = mats.reduce((s, m) => s + (Number(m.cost) || 0), 0);
+          const labTotal = labs.reduce((s, l) => s + (Number(l.charge) || 0), 0);
+          const grand = matTotal + labTotal;
+
+          const row = document.createElement('div');
+          row.className = 'job-row';
+
+          let lineItemsHtml = '';
+          for (const m of mats) {
+            let imgTag = '';
+            if (m.photo_path) {
+              const { data: signed } = await supabaseClient.storage
+                .from('material-photos')
+                .createSignedUrl(m.photo_path, 3600);
+              if (signed?.signedUrl) {
+                imgTag = `<img src="${signed.signedUrl}" data-full="${signed.signedUrl}" class="view-photo">`;
+              }
+            }
+            lineItemsHtml += `
+              <div class="line-item">
+                ${imgTag || '<span style="width:40px;"></span>'}
+                <span class="name">${escapeHtml(m.name)} <span style="color:var(--ink-soft);">(material)</span></span>
+                <span class="amt">₹${(Number(m.cost) || 0).toFixed(2)}</span>
+              </div>`;
+          }
+          for (const l of labs) {
+            lineItemsHtml += `
+              <div class="line-item">
+                <span style="width:40px;"></span>
+                <span class="name">${escapeHtml(l.description || 'Labour')} <span style="color:var(--ink-soft);">(labour)</span></span>
+                <span class="amt">₹${(Number(l.charge) || 0).toFixed(2)}</span>
+              </div>`;
+          }
+
+          const statusBadge = `<span class="badge badge-${(r.status || 'pending').toLowerCase().replace(' ', '-')}">${escapeHtml(r.status || 'Pending')}</span>`;
+
+          row.innerHTML = `
+            <div class="job-row-head">
+              <div>
+                <b>${escapeHtml(r.description || 'Repair job')}</b> ${statusBadge}<br>
+                <span style="color:var(--ink-soft);font-size:0.82rem;">${escapeHtml(r.repair_date || '')}</span>
+              </div>
+              <div class="job-total">₹${grand.toFixed(2)}</div>
+            </div>
+            ${lineItemsHtml}
+            <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+              <button class="btn btn-ghost btn-sm add-material-btn" data-repair="${r.id}">+ Material</button>
+              <button class="btn btn-ghost btn-sm add-labour-btn" data-repair="${r.id}">+ Labour</button>
+              <button class="btn btn-primary btn-sm pdf-invoice-btn" data-repair="${r.id}">📄 Download Invoice</button>
+              <button class="btn btn-ghost btn-sm delete-repair-btn" data-repair="${r.id}" style="color:var(--red);border-color:var(--red);margin-left:auto;">Delete job</button>
+            </div>
+          `;
+
+          // Attach data to element for PDF generation
+          row.dataset.repairData = JSON.stringify({ repair: r, materials: mats, labour: labs, grandTotal: grand });
+          dayBlock.appendChild(row);
         }
+        monthBlock.appendChild(dayBlock);
       }
-      lineItemsHtml += `
-        <div class="line-item">
-          ${imgTag || '<span style="width:40px;"></span>'}
-          <span class="name">${escapeHtml(m.name)} <span style="color:var(--ink-soft);">(material)</span></span>
-          <span class="amt">₹${(Number(m.cost) || 0).toFixed(2)}</span>
-        </div>`;
+      yearBlock.appendChild(monthBlock);
     }
-    for (const l of labs) {
-      lineItemsHtml += `
-        <div class="line-item">
-          <span style="width:40px;"></span>
-          <span class="name">${escapeHtml(l.description || 'Labour')} <span style="color:var(--ink-soft);">(labour)</span></span>
-          <span class="amt">₹${(Number(l.charge) || 0).toFixed(2)}</span>
-        </div>`;
-    }
-
-    row.innerHTML = `
-      <div class="job-row-head">
-        <div>
-          <b>${escapeHtml(r.description || 'Repair job')}</b><br>
-          <span style="color:var(--ink-soft);font-size:0.82rem;">${escapeHtml(r.repair_date || '')}</span>
-        </div>
-        <div class="job-total">₹${grand.toFixed(2)}</div>
-      </div>
-      ${lineItemsHtml}
-      <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap;">
-        <button class="btn btn-ghost btn-sm add-material-btn" data-repair="${r.id}">+ Material</button>
-        <button class="btn btn-ghost btn-sm add-labour-btn" data-repair="${r.id}">+ Labour</button>
-        <button class="btn btn-ghost btn-sm delete-repair-btn" data-repair="${r.id}" style="color:var(--red);border-color:var(--red);margin-left:auto;">Delete job</button>
-      </div>
-    `;
-    list.appendChild(row);
+    nestedContainer.appendChild(yearBlock);
   }
 
   // Wire per-row events
-  list.querySelectorAll('.add-material-btn').forEach(b => b.addEventListener('click', () => {
+  nestedContainer.querySelectorAll('.add-material-btn').forEach(b => b.addEventListener('click', () => {
     document.getElementById('f-material-repair-id').value = b.dataset.repair;
     document.getElementById('form-material').reset();
     document.getElementById('modal-material-msg').textContent = '';
     openModal('modal-material');
   }));
 
-  list.querySelectorAll('.add-labour-btn').forEach(b => b.addEventListener('click', () => {
+  nestedContainer.querySelectorAll('.add-labour-btn').forEach(b => b.addEventListener('click', () => {
     document.getElementById('f-labour-repair-id').value = b.dataset.repair;
     document.getElementById('form-labour').reset();
     document.getElementById('modal-labour-msg').textContent = '';
     openModal('modal-labour');
   }));
 
-  list.querySelectorAll('.delete-repair-btn').forEach(b => b.addEventListener('click', async () => {
+  nestedContainer.querySelectorAll('.pdf-invoice-btn').forEach(b => b.addEventListener('click', (e) => {
+    const card = e.target.closest('.job-row');
+    const data = JSON.parse(card.dataset.repairData);
+    generatePDFInvoice(data);
+  }));
+
+  nestedContainer.querySelectorAll('.delete-repair-btn').forEach(b => b.addEventListener('click', async () => {
     if (!confirm('Delete this repair job and all its materials/labour entries?')) return;
     const { error } = await supabaseClient.from('repairs').delete().eq('id', b.dataset.repair);
     if (error) toast('Delete failed: ' + error.message, 'error');
     else { toast('Repair job deleted', 'success'); loadRepairs(currentTruckId); }
   }));
 
-  list.querySelectorAll('.view-photo').forEach(img => img.addEventListener('click', () => {
+  nestedContainer.querySelectorAll('.view-photo').forEach(img => img.addEventListener('click', () => {
     const photoViewer = document.getElementById('photo-viewer-img');
     if (photoViewer) photoViewer.src = img.dataset.full;
     openModal('modal-photo');
   }));
+}
+
+// ============================================================
+// PDF Invoice Generator
+// ============================================================
+function generatePDFInvoice({ repair, materials, labour, grandTotal }) {
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF();
+  const truck = allTrucks.find(t => t.id === repair.truck_id) || {};
+
+  // Header
+  doc.setFontSize(20);
+  doc.text('TRUCK REPAIR INVOICE', 14, 20);
+
+  doc.setFontSize(10);
+  doc.text(`Invoice Date: ${repair.repair_date || new Date().toISOString().slice(0, 10)}`, 14, 28);
+  doc.text(`Status: ${repair.status || 'Pending'}`, 14, 34);
+
+  // Truck Details
+  doc.setFontSize(12);
+  doc.text('Vehicle & Owner Information', 14, 46);
+  doc.setFontSize(10);
+  doc.text(`Plate Number: ${truck.plate_number || 'N/A'}`, 14, 52);
+  doc.text(`Owner Name: ${truck.owner_name || 'N/A'} (${truck.owner_phone || ''})`, 14, 58);
+  doc.text(`Driver Name: ${truck.driver_name || 'N/A'} (${truck.driver_phone || ''})`, 14, 64);
+  doc.text(`Job Description: ${repair.description || 'N/A'}`, 14, 70);
+
+  // Table Data
+  const tableRows = [];
+  materials.forEach(m => {
+    tableRows.push(['Material', m.name, `₹${(Number(m.cost) || 0).toFixed(2)}`]);
+  });
+  labour.forEach(l => {
+    tableRows.push(['Labour', l.description || 'Service Charge', `₹${(Number(l.charge) || 0).toFixed(2)}`]);
+  });
+
+  doc.autoTable({
+    startY: 78,
+    head: [['Type', 'Description', 'Amount']],
+    body: tableRows,
+  });
+
+  const finalY = doc.lastAutoTable.finalY + 10;
+  doc.setFontSize(12);
+  doc.text(`Grand Total: ₹${grandTotal.toFixed(2)}`, 14, finalY);
+
+  doc.save(`Invoice_${truck.plate_number || 'Truck'}_${repair.repair_date}.pdf`);
+  toast('Invoice downloaded', 'success');
+}
+
+// ============================================================
+// Analytics & Reminders
+// ============================================================
+async function loadAnalytics() {
+  const ctx = document.getElementById('cost-analytics-chart')?.getContext('2d');
+  if (!ctx) return;
+
+  const { data: repairs } = await supabaseClient.from('repairs').select('id, repair_date');
+  if (!repairs) return;
+
+  const repairIds = repairs.map(r => r.id);
+  const [{ data: materials }, { data: labour }] = await Promise.all([
+    supabaseClient.from('materials').select('cost, repair_id').in('repair_id', repairIds),
+    supabaseClient.from('labour').select('charge, repair_id').in('repair_id', repairIds),
+  ]);
+
+  const monthlyTotals = {};
+  repairs.forEach(r => {
+    const month = r.repair_date ? r.repair_date.substring(0, 7) : 'Unknown';
+    const rMats = (materials || []).filter(m => m.repair_id === r.id).reduce((s, m) => s + (Number(m.cost) || 0), 0);
+    const rLabs = (labour || []).filter(l => l.repair_id === r.id).reduce((s, l) => s + (Number(l.charge) || 0), 0);
+    monthlyTotals[month] = (monthlyTotals[month] || 0) + rMats + rLabs;
+  });
+
+  const labels = Object.keys(monthlyTotals).sort();
+  const data = labels.map(l => monthlyTotals[l]);
+
+  if (analyticsChart) analyticsChart.destroy();
+  analyticsChart = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [{
+        label: 'Total Expenses (₹)',
+        data,
+        backgroundColor: '#f59e0b',
+      }]
+    },
+    options: { responsive: true, maintainAspectRatio: false }
+  });
+}
+
+async function loadReminders() {
+  const container = document.getElementById('reminders-list');
+  if (!container) return;
+
+  container.innerHTML = '<p style="color:var(--ink-soft);">Checking upcoming maintenance schedules...</p>';
+  
+  if (allTrucks.length === 0) await loadTrucks();
+
+  if (allTrucks.length === 0) {
+    container.innerHTML = '<p>No trucks registered for maintenance tracking.</p>';
+    return;
+  }
+
+  container.innerHTML = '';
+  allTrucks.forEach(t => {
+    const item = document.createElement('div');
+    item.className = 'job-row';
+    item.innerHTML = `
+      <b>${escapeHtml(t.plate_number)}</b>
+      <p style="margin:4px 0 0;font-size:0.85rem;color:var(--ink-soft);">
+        Routine inspection & oil change suggested every 90 days.
+      </p>
+    `;
+    container.appendChild(item);
+  });
 }
 
 // ============================================================
@@ -256,6 +438,8 @@ function wireUpUI() {
 
   document.getElementById('btn-back').addEventListener('click', backToTrucks);
   document.getElementById('nav-trucks').addEventListener('click', backToTrucks);
+  document.getElementById('nav-analytics').addEventListener('click', () => switchView('view-analytics'));
+  document.getElementById('nav-reminders').addEventListener('click', () => switchView('view-reminders'));
 
   document.getElementById('search-plate').addEventListener('input', (e) => {
     const q = e.target.value.trim().toLowerCase();
@@ -345,6 +529,7 @@ function wireUpUI() {
       truck_id: currentTruckId,
       repair_date: document.getElementById('f-repair-date').value,
       description: document.getElementById('f-repair-desc').value.trim(),
+      status: document.getElementById('f-repair-status')?.value || 'Pending',
     };
     const { error } = await supabaseClient.from('repairs').insert(payload);
     if (error) { showMsg(msg, error.message, 'error'); return; }
@@ -353,7 +538,7 @@ function wireUpUI() {
     loadRepairs(currentTruckId);
   });
 
-  // Material Upload
+  // Material Upload with Image Compression
   document.getElementById('form-material').addEventListener('submit', async (e) => {
     e.preventDefault();
     const msg = document.getElementById('modal-material-msg');
@@ -366,14 +551,25 @@ function wireUpUI() {
     const costInput = document.getElementById('f-material-cost').value;
     const cost = parseFloat(costInput) || 0;
     const fileInput = document.getElementById('f-material-photo');
-    const file = fileInput.files ? fileInput.files[0] : null;
+    let file = fileInput.files ? fileInput.files[0] : null;
 
     let photo_path = null;
     if (file) {
+      // Client-side Image Compression
+      try {
+        if (window.imageCompression) {
+          const options = { maxSizeMB: 0.8, maxWidthOrHeight: 1200, useWebWorker: true };
+          file = await window.imageCompression(file, options);
+        }
+      } catch (compErr) {
+        console.warn('Image compression failed, using original file', compErr);
+      }
+
       const path = `${currentUser.id}/${repairId}/${Date.now()}-${file.name}`;
       const { error: uploadError } = await supabaseClient.storage
         .from('material-photos')
         .upload(path, file);
+
       if (uploadError) {
         showMsg(msg, 'Photo upload failed: ' + uploadError.message, 'error');
         btn.disabled = false; btn.textContent = 'Add material';
