@@ -43,7 +43,6 @@ async function initSupabaseSession() {
     document.getElementById('sidebar-user').innerText = 'Supabase Connected';
     await Promise.all([fetchTrucks(), fetchRepairs(), fetchRevenues()]);
   } else {
-    console.warn('Supabase client not detected. Loading local demo data.');
     document.getElementById('sidebar-user').innerText = 'Demo Mode';
     loadDemoData();
   }
@@ -553,20 +552,19 @@ function renderCalendar() {
   let mTotalRevenue = 0;
   let mTotalExpenses = 0;
 
-  // Empty cells before start of month
+  // Blank slots for days before start of month
   for (let i = 0; i < firstDay; i++) {
     const emptyCell = document.createElement('div');
     emptyCell.className = 'calendar-day empty';
     container.appendChild(emptyCell);
   }
 
-  // Days of the month
+  // Generate calendar days
   for (let day = 1; day <= daysInMonth; day++) {
     const monthStr = String(month + 1).padStart(2, '0');
     const dayStr = String(day).padStart(2, '0');
     const dateFormatted = `${year}-${monthStr}-${dayStr}`;
 
-    // Filter day data
     const dayRevenues = revenues.filter(r => r.date === dateFormatted);
     const dayRepairs = repairs.filter(r => r.date === dateFormatted);
 
@@ -582,6 +580,18 @@ function renderCalendar() {
       pnlClass = dayNet >= 0 ? 'status-profit' : 'status-loss';
     }
 
+    let statsHtml = '';
+    if (dayRevTotal > 0) {
+      statsHtml += `<div class="day-stat rev">+₹${dayRevTotal.toLocaleString('en-IN')}</div>`;
+    }
+    if (dayExpTotal > 0) {
+      statsHtml += `<div class="day-stat exp">-₹${dayExpTotal.toLocaleString('en-IN')}</div>`;
+    }
+    // Only display net calculation line if BOTH revenue and expenses exist on the same day
+    if (dayRevTotal > 0 && dayExpTotal > 0) {
+      statsHtml += `<div class="day-stat net ${dayNet >= 0 ? 'text-green' : 'text-red'}">Net ${dayNet >= 0 ? '+' : ''}₹${Math.abs(dayNet).toLocaleString('en-IN')}</div>`;
+    }
+
     const cell = document.createElement('div');
     cell.className = `calendar-day ${pnlClass}`;
     cell.innerHTML = `
@@ -590,13 +600,7 @@ function renderCalendar() {
         <button class="btn-add-day" onclick="openAddRevenueModal('${dateFormatted}')" title="Log Income">+</button>
       </div>
       <div class="day-body">
-        ${dayRevTotal > 0 ? `<div class="day-stat rev">+₹${dayRevTotal.toLocaleString('en-IN')}</div>` : ''}
-        ${dayExpTotal > 0 ? `<div class="day-stat exp">-₹${dayExpTotal.toLocaleString('en-IN')}</div>` : ''}
-        ${(dayRevTotal > 0 || dayExpTotal > 0) ? `
-          <div class="day-stat net ${dayNet >= 0 ? 'text-green' : 'text-red'}">
-            ${dayNet >= 0 ? '+' : ''}₹${Math.abs(dayNet).toLocaleString('en-IN')}
-          </div>
-        ` : ''}
+        ${statsHtml}
       </div>
     `;
 
