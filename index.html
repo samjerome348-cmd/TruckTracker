@@ -1,242 +1,258 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Truck Tracker — Dashboard</title>
-<script>
-(function(){var t=localStorage.getItem('truck-tracker-theme');if(!t){t=window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';}document.documentElement.setAttribute('data-theme',t);})();
-</script>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=IBM+Plex+Mono:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Truck Tracker — Dashboard</title>
+  
+  <script>
+    (function(){
+      var t = localStorage.getItem('truck-tracker-theme');
+      if(!t){
+        t = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+      }
+      document.documentElement.setAttribute('data-theme', t);
+    })();
+  </script>
 
-<!-- External Libraries for PDF, Image Compression, and Analytics -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/browser-image-compression@2.0.2/dist/browser-image-compression.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=IBM+Plex+Mono:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css?v=3">
+
+  <!-- External Libraries for PDF, Image Compression, and Analytics -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/browser-image-compression@2.0.2/dist/browser-image-compression.js"></script>
 </head>
 <body>
 
-<div class="theme-toggle-wrap">
-  <button class="theme-toggle" id="theme-toggle" aria-label="Toggle light and dark theme">
-    <span class="knob"></span>
-  </button>
-</div>
+  <!-- Theme Switcher Toggle -->
+  <div class="theme-toggle-wrap">
+    <button class="theme-toggle" id="theme-toggle" aria-label="Toggle light and dark theme">
+      <span class="knob"></span>
+    </button>
+  </div>
 
-<div class="app-layout">
-  <!-- Sidebar Navigation -->
-  <aside class="sidebar">
-    <div class="auth-brand">
-      <span class="plate">TT</span>
-      <div>
-        <h1>Truck Tracker</h1>
-        <div class="sub">Fleet & Maintenance</div>
-      </div>
-    </div>
-    <nav class="nav-menu">
-      <button id="nav-trucks" class="nav-btn active">🚚 Fleet Dashboard</button>
-      <button id="nav-analytics" class="nav-btn">📊 Cost Analytics</button>
-      <button id="nav-reminders" class="nav-btn">⏰ Service Reminders</button>
-    </nav>
-    <div class="sidebar-footer">
-      <span id="sidebar-user" class="user-email">Loading...</span>
-      <button id="btn-logout" class="btn btn-ghost btn-sm">Log out</button>
-    </div>
-  </aside>
-
-  <!-- Main View Area -->
-  <main class="main-content">
-    <div id="toast-container"></div>
-
-    <!-- VIEW 1: FLEET GRID -->
-    <section id="view-trucks">
-      <div class="view-header">
-        <h2>Fleet Overview</h2>
-        <div class="actions">
-          <input type="text" id="search-plate" placeholder="Search plate number..." class="input-search">
-          <button id="btn-add-truck" class="btn btn-primary">+ Add Truck</button>
+  <!-- Primary Application Wrapper -->
+  <div id="app-layout" class="app-layout">
+    
+    <!-- Sidebar Navigation -->
+    <aside class="sidebar">
+      <div class="auth-brand">
+        <span class="plate">TT</span>
+        <div>
+          <h1>Truck Tracker</h1>
+          <div class="sub">Fleet & Maintenance</div>
         </div>
       </div>
-      <div id="trucks-grid" class="trucks-grid"></div>
-      <div id="trucks-empty" class="empty-state hidden">No trucks found.</div>
-    </section>
+      
+      <nav class="nav-menu">
+        <button id="nav-trucks" class="nav-btn active">🚚 Fleet Dashboard</button>
+        <button id="nav-analytics" class="nav-btn">📊 Cost Analytics</button>
+        <button id="nav-reminders" class="nav-btn">⏰ Service Reminders</button>
+      </nav>
+      
+      <div class="sidebar-footer">
+        <span id="sidebar-user" class="user-email">Loading...</span>
+        <button id="btn-logout" class="btn btn-ghost btn-sm">Log out</button>
+      </div>
+    </aside>
 
-    <!-- VIEW 2: TRUCK DETAIL & REPAIRS -->
-    <section id="view-truck-detail" class="hidden">
-      <div class="detail-header">
-        <button id="btn-back" class="btn btn-ghost btn-sm">← Back to Fleet</button>
-        <div class="truck-summary-card">
-          <h2 id="detail-plate" class="plate-title">---</h2>
-          <div class="meta-info">
-            <div><b>Owner:</b> <span id="detail-owner-name">—</span> (<span id="detail-owner-phone"></span>)</div>
-            <div><b>Driver:</b> <span id="detail-driver-name">—</span> (<span id="detail-driver-phone"></span>)</div>
-          </div>
-          <div class="truck-actions">
-            <button id="btn-edit-truck" class="btn btn-ghost btn-sm">Edit Truck</button>
-            <button id="btn-delete-truck" class="btn btn-ghost btn-sm btn-danger">Delete Truck</button>
+    <!-- Main View Area -->
+    <main class="main-content">
+      <div id="toast-container"></div>
+
+      <!-- VIEW 1: FLEET GRID -->
+      <section id="view-trucks">
+        <div class="view-header">
+          <h2>Fleet Overview</h2>
+          <div class="actions">
+            <input type="text" id="search-plate" placeholder="Search plate number..." class="input-search">
+            <button id="btn-add-truck" class="btn btn-primary">+ Add Truck</button>
           </div>
         </div>
-      </div>
+        <div id="trucks-grid" class="trucks-grid"></div>
+        <div id="trucks-empty" class="empty-state hidden">No trucks found.</div>
+      </section>
 
-      <div class="repairs-section">
-        <div class="section-header">
-          <h3>Repair History</h3>
-          <button id="btn-add-repair" class="btn btn-amber btn-sm">+ New Repair Job</button>
+      <!-- VIEW 2: TRUCK DETAIL & REPAIRS -->
+      <section id="view-truck-detail" class="hidden">
+        <div class="detail-header">
+          <button id="btn-back" class="btn btn-ghost btn-sm">← Back to Fleet</button>
+          <div class="truck-summary-card">
+            <div>
+              <h2 id="detail-plate" class="plate-title">---</h2>
+              <div class="meta-info">
+                <div><b>Owner:</b> <span id="detail-owner-name">—</span> (<span id="detail-owner-phone"></span>)</div>
+                <div><b>Driver:</b> <span id="detail-driver-name">—</span> (<span id="detail-driver-phone"></span>)</div>
+              </div>
+            </div>
+            <div class="truck-actions" style="display: flex; gap: 8px;">
+              <button id="btn-edit-truck" class="btn btn-ghost btn-sm">Edit Truck</button>
+              <button id="btn-delete-truck" class="btn btn-ghost btn-sm btn-danger">Delete Truck</button>
+            </div>
+          </div>
         </div>
-        <!-- Grouped Year -> Month -> Day Container -->
-        <div id="repairs-nested-container"></div>
-        <div id="repairs-list" class="repairs-list"></div>
-        <div id="repairs-empty" class="empty-state hidden">No repair history recorded.</div>
-      </div>
-    </section>
 
-    <!-- VIEW 3: COST ANALYTICS -->
-    <section id="view-analytics" class="hidden">
-      <h2>Cost & Expense Analytics</h2>
-      <div class="chart-container" style="position: relative; height:40vh; width:80vw">
-        <canvas id="cost-analytics-chart"></canvas>
-      </div>
-    </section>
+        <div class="repairs-section">
+          <div class="section-header">
+            <h3>Repair History</h3>
+            <button id="btn-add-repair" class="btn btn-amber btn-sm">+ New Repair Job</button>
+          </div>
+          <!-- Grouped Year -> Month -> Day Container -->
+          <div id="repairs-nested-container"></div>
+          <div id="repairs-list" class="repairs-list"></div>
+          <div id="repairs-empty" class="empty-state hidden">No repair history recorded.</div>
+        </div>
+      </section>
 
-    <!-- VIEW 4: SERVICE REMINDERS -->
-    <section id="view-reminders" class="hidden">
-      <h2>Routine Service Reminders</h2>
-      <div id="reminders-list" class="reminders-list"></div>
-    </section>
-  </main>
-</div>
+      <!-- VIEW 3: COST ANALYTICS -->
+      <section id="view-analytics" class="hidden">
+        <h2 style="margin-bottom: 20px;">Cost & Expense Analytics</h2>
+        <div class="chart-container" style="position: relative; height: 50vh; width: 100%; max-width: 900px; margin: 0 auto;">
+          <canvas id="cost-analytics-chart"></canvas>
+        </div>
+      </section>
 
-<!-- ================= MODALS ================= -->
-
-<!-- ADD / EDIT TRUCK MODAL -->
-<div id="modal-truck" class="modal-overlay hidden">
-  <div class="modal-card">
-    <h3 id="modal-truck-title">Add Truck</h3>
-    <div id="modal-truck-msg" class="msg"></div>
-    <form id="form-truck">
-      <div class="field">
-        <label for="f-plate">Plate Number</label>
-        <input type="text" id="f-plate" required placeholder="e.g. KA-01-AB-1234">
-      </div>
-      <div class="field">
-        <label for="f-owner-name">Owner Name</label>
-        <input type="text" id="f-owner-name">
-      </div>
-      <div class="field">
-        <label for="f-owner-phone">Owner Phone</label>
-        <input type="text" id="f-owner-phone">
-      </div>
-      <div class="field">
-        <label for="f-driver-name">Driver Name</label>
-        <input type="text" id="f-driver-name">
-      </div>
-      <div class="field">
-        <label for="f-driver-phone">Driver Phone</label>
-        <input type="text" id="f-driver-phone">
-      </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-ghost" data-close="modal-truck">Cancel</button>
-        <button type="submit" class="btn btn-primary">Save Truck</button>
-      </div>
-    </form>
+      <!-- VIEW 4: SERVICE REMINDERS -->
+      <section id="view-reminders" class="hidden">
+        <h2 style="margin-bottom: 20px;">Routine Service Reminders</h2>
+        <div id="reminders-list" class="reminders-list"></div>
+      </section>
+    </main>
   </div>
-</div>
 
-<!-- ADD REPAIR JOB MODAL -->
-<div id="modal-repair" class="modal-overlay hidden">
-  <div class="modal-card">
-    <h3>Create Repair Job</h3>
-    <div id="modal-repair-msg" class="msg"></div>
-    <form id="form-repair">
-      <div class="field">
-        <label for="f-repair-date">Date</label>
-        <input type="date" id="f-repair-date" required>
-      </div>
-      <div class="field">
-        <label for="f-repair-desc">Job Description</label>
-        <input type="text" id="f-repair-desc" required placeholder="e.g. Engine Overhaul & Brake Service">
-      </div>
-      <div class="field">
-        <label for="f-repair-status">Job Status</label>
-        <select id="f-repair-status" class="input-select">
-          <option value="Pending">Pending</option>
-          <option value="In Progress">In Progress</option>
-          <option value="Completed">Completed</option>
-          <option value="Invoiced">Invoiced</option>
-        </select>
-      </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-ghost" data-close="modal-repair">Cancel</button>
-        <button type="submit" class="btn btn-amber">Create Job</button>
-      </div>
-    </form>
+  <!-- ================= MODALS ================= -->
+
+  <!-- ADD / EDIT TRUCK MODAL -->
+  <div id="modal-truck" class="modal-overlay hidden">
+    <div class="modal-card">
+      <h3 id="modal-truck-title">Add Truck</h3>
+      <div id="modal-truck-msg" class="msg"></div>
+      <form id="form-truck">
+        <div class="field">
+          <label for="f-plate">Plate Number</label>
+          <input type="text" id="f-plate" required placeholder="e.g. KA-01-AB-1234">
+        </div>
+        <div class="field">
+          <label for="f-owner-name">Owner Name</label>
+          <input type="text" id="f-owner-name">
+        </div>
+        <div class="field">
+          <label for="f-owner-phone">Owner Phone</label>
+          <input type="text" id="f-owner-phone">
+        </div>
+        <div class="field">
+          <label for="f-driver-name">Driver Name</label>
+          <input type="text" id="f-driver-name">
+        </div>
+        <div class="field">
+          <label for="f-driver-phone">Driver Phone</label>
+          <input type="text" id="f-driver-phone">
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-ghost" data-close="modal-truck">Cancel</button>
+          <button type="submit" class="btn btn-primary">Save Truck</button>
+        </div>
+      </form>
+    </div>
   </div>
-</div>
 
-<!-- ADD MATERIAL MODAL -->
-<div id="modal-material" class="modal-overlay hidden">
-  <div class="modal-card">
-    <h3>Add Part / Material</h3>
-    <div id="modal-material-msg" class="msg"></div>
-    <form id="form-material">
-      <input type="hidden" id="f-material-repair-id">
-      <div class="field">
-        <label for="f-material-name">Item Name / Description</label>
-        <input type="text" id="f-material-name" required placeholder="e.g. Brake Pads (Pair)">
-      </div>
-      <div class="field">
-        <label for="f-material-cost">Cost (₹)</label>
-        <input type="number" step="0.01" id="f-material-cost" required placeholder="0.00">
-      </div>
-      <div class="field">
-        <label for="f-material-photo">Attach Receipt / Photo</label>
-        <input type="file" id="f-material-photo" accept="image/*">
-        <div class="helper-text">Photos will be automatically compressed before upload.</div>
-      </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-ghost" data-close="modal-material">Cancel</button>
-        <button type="submit" class="btn btn-primary">Add Material</button>
-      </div>
-    </form>
+  <!-- ADD REPAIR JOB MODAL -->
+  <div id="modal-repair" class="modal-overlay hidden">
+    <div class="modal-card">
+      <h3>Create Repair Job</h3>
+      <div id="modal-repair-msg" class="msg"></div>
+      <form id="form-repair">
+        <div class="field">
+          <label for="f-repair-date">Date</label>
+          <input type="date" id="f-repair-date" required>
+        </div>
+        <div class="field">
+          <label for="f-repair-desc">Job Description</label>
+          <input type="text" id="f-repair-desc" required placeholder="e.g. Engine Overhaul & Brake Service">
+        </div>
+        <div class="field">
+          <label for="f-repair-status">Job Status</label>
+          <select id="f-repair-status" class="input-select">
+            <option value="Pending">Pending</option>
+            <option value="In Progress">In Progress</option>
+            <option value="Completed">Completed</option>
+            <option value="Invoiced">Invoiced</option>
+          </select>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-ghost" data-close="modal-repair">Cancel</button>
+          <button type="submit" class="btn btn-amber">Create Job</button>
+        </div>
+      </form>
+    </div>
   </div>
-</div>
 
-<!-- ADD LABOUR MODAL -->
-<div id="modal-labour" class="modal-overlay hidden">
-  <div class="modal-card">
-    <h3>Add Labour Charge</h3>
-    <div id="modal-labour-msg" class="msg"></div>
-    <form id="form-labour">
-      <input type="hidden" id="f-labour-repair-id">
-      <div class="field">
-        <label for="f-labour-desc">Service Description</label>
-        <input type="text" id="f-labour-desc" required placeholder="e.g. Mechanic Work - 3 Hours">
-      </div>
-      <div class="field">
-        <label for="f-labour-charge">Charge Amount (₹)</label>
-        <input type="number" step="0.01" id="f-labour-charge" required placeholder="0.00">
-      </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-ghost" data-close="modal-labour">Cancel</button>
-        <button type="submit" class="btn btn-primary">Add Charge</button>
-      </div>
-    </form>
+  <!-- ADD MATERIAL MODAL -->
+  <div id="modal-material" class="modal-overlay hidden">
+    <div class="modal-card">
+      <h3>Add Part / Material</h3>
+      <div id="modal-material-msg" class="msg"></div>
+      <form id="form-material">
+        <input type="hidden" id="f-material-repair-id">
+        <div class="field">
+          <label for="f-material-name">Item Name / Description</label>
+          <input type="text" id="f-material-name" required placeholder="e.g. Brake Pads (Pair)">
+        </div>
+        <div class="field">
+          <label for="f-material-cost">Cost (₹)</label>
+          <input type="number" step="0.01" id="f-material-cost" required placeholder="0.00">
+        </div>
+        <div class="field">
+          <label for="f-material-photo">Attach Receipt / Photo</label>
+          <input type="file" id="f-material-photo" accept="image/*">
+          <div class="helper-text">Photos will be automatically compressed before upload.</div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-ghost" data-close="modal-material">Cancel</button>
+          <button type="submit" class="btn btn-primary">Add Material</button>
+        </div>
+      </form>
+    </div>
   </div>
-</div>
 
-<!-- PHOTO VIEWER MODAL -->
-<div id="modal-photo" class="modal-overlay hidden">
-  <div class="modal-card modal-photo-card">
-    <button type="button" class="close-btn" data-close="modal-photo">&times;</button>
-    <img id="photo-viewer-img" src="" alt="Material Photo">
+  <!-- ADD LABOUR MODAL -->
+  <div id="modal-labour" class="modal-overlay hidden">
+    <div class="modal-card">
+      <h3>Add Labour Charge</h3>
+      <div id="modal-labour-msg" class="msg"></div>
+      <form id="form-labour">
+        <input type="hidden" id="f-labour-repair-id">
+        <div class="field">
+          <label for="f-labour-desc">Service Description</label>
+          <input type="text" id="f-labour-desc" required placeholder="e.g. Mechanic Work - 3 Hours">
+        </div>
+        <div class="field">
+          <label for="f-labour-charge">Charge Amount (₹)</label>
+          <input type="number" step="0.01" id="f-labour-charge" required placeholder="0.00">
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-ghost" data-close="modal-labour">Cancel</button>
+          <button type="submit" class="btn btn-primary">Add Charge</button>
+        </div>
+      </form>
+    </div>
   </div>
-</div>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="config.js"></script>
-<script src="theme.js"></script>
-<script src="app.js"></script>
+  <!-- PHOTO VIEWER MODAL -->
+  <div id="modal-photo" class="modal-overlay hidden">
+    <div class="modal-card modal-photo-card">
+      <button type="button" class="close-btn" data-close="modal-photo">&times;</button>
+      <img id="photo-viewer-img" src="" alt="Material Photo">
+    </div>
+  </div>
+
+  <!-- JavaScript Bundle -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="config.js"></script>
+  <script src="theme.js"></script>
+  <script src="app.js"></script>
 </body>
 </html>
