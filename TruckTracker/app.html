@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Truck Tracker</title>
+<script>
+(function(){var t=localStorage.getItem('truck-tracker-theme');if(!t){t=window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';}document.documentElement.setAttribute('data-theme',t);})();
+</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=IBM+Plex+Mono:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<div class="theme-toggle-wrap">
+  <button class="theme-toggle" id="theme-toggle" aria-label="Toggle light and dark theme">
+    <span class="knob"></span>
+  </button>
+</div>
+
+<div class="app-shell">
+
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <span class="mark">TT</span>
+      <span>Truck Tracker</span>
+    </div>
+    <button class="nav-item active" id="nav-trucks">🚚&nbsp; Trucks</button>
+    <div class="sidebar-footer">
+      <div class="sidebar-user" id="sidebar-user">...</div>
+      <button class="btn btn-ghost btn-sm btn-block" id="btn-logout">Log out</button>
+    </div>
+  </aside>
+
+  <main class="main">
+
+    <!-- ===== TRUCKS LIST VIEW ===== -->
+    <div id="view-trucks">
+      <div class="topbar">
+        <div>
+          <h1 class="page-title">Trucks</h1>
+          <p class="page-sub">Every vehicle you've serviced, at a glance.</p>
+        </div>
+        <div class="search-slot">
+          <input type="text" id="search-plate" placeholder="SEARCH PLATE NUMBER">
+        </div>
+        <button class="btn btn-amber btn-sm" style="width:auto;" id="btn-add-truck">+ Add truck</button>
+      </div>
+
+      <div id="trucks-grid" class="grid"></div>
+      <div id="trucks-empty" class="empty-state hidden">
+        <div class="plate plate-lg">?? ??</div>
+        <p>No trucks yet. Add your first one to get started.</p>
+      </div>
+    </div>
+
+    <!-- ===== TRUCK DETAIL VIEW ===== -->
+    <div id="view-truck-detail" class="hidden">
+      <button class="btn btn-ghost btn-sm" style="width:auto;margin-bottom:16px;" id="btn-back">&larr; All trucks</button>
+
+      <div class="topbar">
+        <div>
+          <span class="plate plate-lg" id="detail-plate">—</span>
+        </div>
+        <button class="btn btn-amber btn-sm" style="width:auto;" id="btn-add-repair">+ New repair job</button>
+      </div>
+
+      <div class="card">
+        <div class="row-2" style="font-size:0.88rem;">
+          <div><b>Owner:</b> <span id="detail-owner-name">—</span><br><span id="detail-owner-phone" style="color:var(--ink-soft)"></span></div>
+          <div><b>Driver:</b> <span id="detail-driver-name">—</span><br><span id="detail-driver-phone" style="color:var(--ink-soft)"></span></div>
+        </div>
+        <div style="margin-top:12px;">
+          <button class="btn btn-ghost btn-sm" style="width:auto;" id="btn-edit-truck">Edit details</button>
+          <button class="btn btn-ghost btn-sm" style="width:auto;color:var(--red);border-color:var(--red);" id="btn-delete-truck">Delete truck</button>
+        </div>
+      </div>
+
+      <div class="section-head"><h2>Repair history</h2></div>
+      <div id="repairs-list"></div>
+      <div id="repairs-empty" class="empty-state hidden">
+        <p>No repair jobs logged yet for this truck.</p>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<!-- ===== MODAL: Add / Edit Truck ===== -->
+<div class="modal-overlay hidden" id="modal-truck">
+  <div class="modal">
+    <button class="modal-close" data-close="modal-truck">&times;</button>
+    <h3 id="modal-truck-title">Add truck</h3>
+    <div id="modal-truck-msg" class="msg"></div>
+    <form id="form-truck">
+      <div class="field">
+        <label>Plate number</label>
+        <input type="text" id="f-plate" required style="text-transform:uppercase;">
+      </div>
+      <div class="row-2">
+        <div class="field">
+          <label>Owner name</label>
+          <input type="text" id="f-owner-name">
+        </div>
+        <div class="field">
+          <label>Owner phone</label>
+          <input type="tel" id="f-owner-phone">
+        </div>
+      </div>
+      <div class="row-2">
+        <div class="field">
+          <label>Driver name</label>
+          <input type="text" id="f-driver-name">
+        </div>
+        <div class="field">
+          <label>Driver phone</label>
+          <input type="tel" id="f-driver-phone">
+        </div>
+      </div>
+      <button type="submit" class="btn btn-primary">Save truck</button>
+    </form>
+  </div>
+</div>
+
+<!-- ===== MODAL: Add Repair Job ===== -->
+<div class="modal-overlay hidden" id="modal-repair">
+  <div class="modal">
+    <button class="modal-close" data-close="modal-repair">&times;</button>
+    <h3>New repair job</h3>
+    <div id="modal-repair-msg" class="msg"></div>
+    <form id="form-repair">
+      <div class="field">
+        <label>Date</label>
+        <input type="date" id="f-repair-date" required>
+      </div>
+      <div class="field">
+        <label>Description</label>
+        <input type="text" id="f-repair-desc" placeholder="e.g. Brake pad replacement">
+      </div>
+      <button type="submit" class="btn btn-primary">Create repair job</button>
+    </form>
+  </div>
+</div>
+
+<!-- ===== MODAL: Add Material ===== -->
+<div class="modal-overlay hidden" id="modal-material">
+  <div class="modal">
+    <button class="modal-close" data-close="modal-material">&times;</button>
+    <h3>Add material</h3>
+    <div id="modal-material-msg" class="msg"></div>
+    <form id="form-material">
+      <input type="hidden" id="f-material-repair-id">
+      <div class="field">
+        <label>Material name</label>
+        <input type="text" id="f-material-name" required placeholder="e.g. Brake pad set">
+      </div>
+      <div class="field">
+        <label>Cost</label>
+        <input type="number" step="0.01" min="0" id="f-material-cost" required>
+      </div>
+      <div class="field">
+        <label>Photo (optional)</label>
+        <input type="file" id="f-material-photo" accept="image/*">
+      </div>
+      <button type="submit" class="btn btn-primary">Add material</button>
+    </form>
+  </div>
+</div>
+
+<!-- ===== MODAL: Add Labour ===== -->
+<div class="modal-overlay hidden" id="modal-labour">
+  <div class="modal">
+    <button class="modal-close" data-close="modal-labour">&times;</button>
+    <h3>Add labour charge</h3>
+    <div id="modal-labour-msg" class="msg"></div>
+    <form id="form-labour">
+      <input type="hidden" id="f-labour-repair-id">
+      <div class="field">
+        <label>Description</label>
+        <input type="text" id="f-labour-desc" placeholder="e.g. Mechanic labour, 3 hrs">
+      </div>
+      <div class="field">
+        <label>Charge</label>
+        <input type="number" step="0.01" min="0" id="f-labour-charge" required>
+      </div>
+      <button type="submit" class="btn btn-primary">Add labour charge</button>
+    </form>
+  </div>
+</div>
+
+<!-- ===== MODAL: Photo viewer ===== -->
+<div class="modal-overlay hidden" id="modal-photo">
+  <div class="modal" style="max-width:560px;text-align:center;">
+    <button class="modal-close" data-close="modal-photo">&times;</button>
+    <img id="photo-viewer-img" style="max-width:100%;border-radius:8px;margin-top:10px;">
+  </div>
+</div>
+
+<div id="toast-container"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="js/config.js"></script>
+<script src="js/theme.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
