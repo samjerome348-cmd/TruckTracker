@@ -23,7 +23,7 @@ let currentTruckId = null;
 })();
 
 // ============================================================
-// Toast
+// Toast & UI Helpers
 // ============================================================
 function toast(msg, type = '') {
   const el = document.createElement('div');
@@ -42,7 +42,7 @@ function openModal(id) { document.getElementById(id).classList.remove('hidden');
 function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
 
 // ============================================================
-// Load & render trucks
+// Load & Render Trucks
 // ============================================================
 async function loadTrucks() {
   const { data, error } = await supabaseClient
@@ -88,7 +88,7 @@ function escapeHtml(str) {
 }
 
 // ============================================================
-// Truck detail view
+// Truck Detail View
 // ============================================================
 async function openTruckDetail(truckId) {
   currentTruckId = truckId;
@@ -114,7 +114,7 @@ function backToTrucks() {
 }
 
 // ============================================================
-// Repairs, materials, labour
+// Repairs, Materials, Labour
 // ============================================================
 async function loadRepairs(truckId) {
   const list = document.getElementById('repairs-list');
@@ -199,7 +199,7 @@ async function loadRepairs(truckId) {
     list.appendChild(row);
   }
 
-  // wire per-row buttons
+  // Wire per-row buttons
   list.querySelectorAll('.add-material-btn').forEach(b => b.addEventListener('click', () => {
     document.getElementById('f-material-repair-id').value = b.dataset.repair;
     document.getElementById('form-material').reset();
@@ -223,7 +223,7 @@ async function loadRepairs(truckId) {
 }
 
 // ============================================================
-// Wire up all UI events
+// Wire UI Events
 // ============================================================
 function wireUpUI() {
   document.getElementById('btn-logout').addEventListener('click', async () => {
@@ -231,7 +231,9 @@ function wireUpUI() {
     window.location.href = 'index.html';
   });
 
+  // Navigation handlers
   document.getElementById('btn-back').addEventListener('click', backToTrucks);
+  document.getElementById('nav-trucks').addEventListener('click', backToTrucks);
 
   document.getElementById('search-plate').addEventListener('input', (e) => {
     const q = e.target.value.trim().toLowerCase();
@@ -241,7 +243,7 @@ function wireUpUI() {
     renderTrucks(filtered);
   });
 
-  // Close modal on backdrop or × click
+  // Close modals
   document.querySelectorAll('.modal-overlay').forEach(ov => {
     ov.addEventListener('click', (e) => { if (e.target === ov) ov.classList.add('hidden'); });
   });
@@ -249,7 +251,7 @@ function wireUpUI() {
     btn.addEventListener('click', () => closeModal(btn.dataset.close));
   });
 
-  // ---- Add truck ----
+  // Add / Edit Truck handlers
   document.getElementById('btn-add-truck').addEventListener('click', () => {
     document.getElementById('modal-truck-title').textContent = 'Add truck';
     document.getElementById('form-truck').reset();
@@ -304,7 +306,7 @@ function wireUpUI() {
     if (mode === 'edit') openTruckDetail(currentTruckId);
   });
 
-  // ---- Add repair job ----
+  // Repair Job handlers
   document.getElementById('btn-add-repair').addEventListener('click', () => {
     document.getElementById('form-repair').reset();
     document.getElementById('f-repair-date').value = new Date().toISOString().slice(0, 10);
@@ -326,7 +328,7 @@ function wireUpUI() {
     loadRepairs(currentTruckId);
   });
 
-  // ---- Add material (with optional photo upload) ----
+  // Material Upload handler
   document.getElementById('form-material').addEventListener('submit', async (e) => {
     e.preventDefault();
     const msg = document.getElementById('modal-material-msg');
@@ -365,7 +367,7 @@ function wireUpUI() {
     loadRepairs(currentTruckId);
   });
 
-  // ---- Add labour ----
+  // Labour Charge handler
   document.getElementById('form-labour').addEventListener('submit', async (e) => {
     e.preventDefault();
     const msg = document.getElementById('modal-labour-msg');
