@@ -11,6 +11,31 @@
 </head>
 <body>
 
+  <!-- Auth Screen (Visible when logged out) -->
+  <div id="auth-screen" class="modal-overlay">
+    <div class="modal-card">
+      <h2>Truck Tracker</h2>
+      <p class="sub" style="margin-bottom: 20px; color: #888;">Sign in to access your fleet database</p>
+      
+      <form id="form-auth" onsubmit="handleAuthSubmit(event)">
+        <div class="field">
+          <label for="auth-email">Email Address</label>
+          <input type="email" id="auth-email" required placeholder="you@example.com">
+        </div>
+        <div class="field">
+          <label for="auth-password">Password</label>
+          <input type="password" id="auth-password" required placeholder="••••••••">
+        </div>
+        <div id="auth-error" class="msg msg-error" style="color: #ff5555; margin-bottom: 15px;"></div>
+        
+        <div style="display: flex; gap: 10px;">
+          <button type="submit" id="btn-login" class="btn btn-amber" style="flex: 1;">Sign In</button>
+          <button type="button" onclick="handleSignUp()" class="btn btn-ghost" style="flex: 1;">Sign Up</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
   <!-- Theme Toggle -->
   <div class="theme-toggle-wrap">
     <button class="theme-toggle" id="theme-toggle-btn" aria-label="Toggle Theme">
@@ -18,7 +43,7 @@
     </button>
   </div>
 
-  <div id="app-layout" class="app-layout">
+  <div id="app-layout" class="app-layout hidden">
     <!-- Sidebar Navigation -->
     <aside class="sidebar">
       <div class="sidebar-brand">
@@ -36,7 +61,7 @@
       </nav>
 
       <div class="sidebar-footer">
-        <div id="sidebar-user" class="user-email">Driver Mode</div>
+        <div id="sidebar-user" class="user-email">Logged in</div>
         <button class="btn btn-ghost btn-sm" onclick="handleLogout()">Sign Out</button>
       </div>
     </aside>
@@ -131,7 +156,7 @@
           <h2>Cost Analytics</h2>
         </div>
         <div class="repairs-section">
-          <p class="meta-info">Analytics and overall vehicle ROI summaries will display here.</p>
+          <p class="meta-info">Analytics and vehicle ROI summaries will display here.</p>
         </div>
       </section>
 
@@ -164,7 +189,6 @@
           <label for="truck-driver-phone">Driver Phone Number</label>
           <input type="tel" id="truck-driver-phone" placeholder="e.g. +91 98765 12345">
         </div>
-        <div id="truck-msg" class="msg msg-error"></div>
         <div class="modal-footer">
           <button type="button" class="btn btn-ghost" onclick="closeModal('modal-add-truck')">Cancel</button>
           <button type="submit" class="btn btn-amber">Save Truck</button>
@@ -206,9 +230,7 @@
         <div class="field">
           <label for="repair-photo">Attach Receipt / Material Photo</label>
           <input type="file" id="repair-photo" accept="image/*" class="file-input">
-          <span class="helper-text">Accepts PNG, JPG, WebP, HEIC, etc.</span>
         </div>
-        <div id="repair-msg" class="msg msg-error"></div>
         <div class="modal-footer">
           <button type="button" class="btn btn-ghost" onclick="closeModal('modal-add-repair')">Cancel</button>
           <button type="submit" class="btn btn-amber">Save Repair</button>
@@ -217,7 +239,7 @@
     </div>
   </div>
 
-  <!-- Modal: Add / Edit Revenue -->
+  <!-- Modal: Add / Edit / Delete Revenue -->
   <div id="modal-add-revenue" class="modal-overlay hidden">
     <div class="modal-card">
       <h3 id="modal-revenue-title">Log Daily Revenue</h3>
@@ -241,8 +263,8 @@
           <label for="revenue-notes">Notes / Trip Details</label>
           <input type="text" id="revenue-notes" placeholder="e.g. Bengaluru to Chennai freight transport">
         </div>
-        <div id="revenue-msg" class="msg msg-error"></div>
         <div class="modal-footer">
+          <button type="button" id="btn-delete-revenue" class="btn btn-ghost text-red hidden" onclick="handleDeleteRevenueFromModal()">Delete Entry</button>
           <button type="button" class="btn btn-ghost" onclick="closeModal('modal-add-revenue')">Cancel</button>
           <button type="submit" class="btn btn-amber">Save Revenue</button>
         </div>
@@ -254,14 +276,12 @@
   <div id="modal-photo" class="modal-overlay hidden" onclick="closeModal('modal-photo')">
     <div class="modal-photo-card" onclick="event.stopPropagation()">
       <button class="close-btn" onclick="closeModal('modal-photo')">×</button>
-      <img id="modal-photo-img" src="" alt="Repair material / receipt photo">
+      <img id="modal-photo-img" src="" alt="Repair receipt photo">
     </div>
   </div>
 
-  <!-- Toast Container -->
   <div id="toast-container"></div>
 
-  <!-- Supabase SDK & Application Scripts -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="supabase-config.js"></script>
   <script src="app.js"></script>
