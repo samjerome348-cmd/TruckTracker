@@ -7,10 +7,18 @@ let activeTruckId = null;
 // Calendar Navigation State
 let calDate = new Date();
 
+// Helper: Format Currency in Indian Rupees (en-IN)
+function formatRupees(amount) {
+  return '₹' + Number(amount || 0).toLocaleString('en-IN', {
+    maximumFractionDigits: 2,
+    minimumFractionDigits: 2
+  });
+}
+
 // Initialize App on DOM Load
 document.addEventListener('DOMContentLoaded', () => {
   initTheme();
-  setupAuthListener();
+  initSupabaseSession();
 });
 
 // Theme Engine Toggle
@@ -29,22 +37,14 @@ function initTheme() {
   }
 }
 
-// Firebase Auth / Data Initialization Handshake
-function setupAuthListener() {
-  if (typeof firebase !== 'undefined' && firebase.auth) {
-    firebase.auth().onAuthStateChanged((user) => {
-      if (user) {
-        document.getElementById('sidebar-user').innerText = user.email || 'Logged In';
-        fetchTrucks();
-        fetchRepairs();
-        fetchRevenues();
-      } else {
-        document.getElementById('sidebar-user').innerText = 'Demo Mode';
-        loadDemoData();
-      }
-    });
+// Supabase Connection & Data Bootstrapping
+async function initSupabaseSession() {
+  if (typeof supabaseClient !== 'undefined' && supabaseClient) {
+    document.getElementById('sidebar-user').innerText = 'Supabase Connected';
+    await Promise.all([fetchTrucks(), fetchRepairs(), fetchRevenues()]);
   } else {
-    console.warn('Firebase SDK not detected. Operating in local mode.');
+    console.warn('Supabase client not detected. Loading local demo data.');
+    document.getElementById('sidebar-user').innerText = 'Demo Mode';
     loadDemoData();
   }
 }
@@ -52,50 +52,74 @@ function setupAuthListener() {
 // Fallback Demo Data
 function loadDemoData() {
   trucks = [
-    { id: '1', plate: 'TX-8921', model: 'Volvo FH16', year: 2021, ownerPhone: '+1 555-0192', driverPhone: '+1 555-0144' },
-    { id: '2', plate: 'KA-04-MN-3001', model: 'Scania R500', year: 2023, ownerPhone: '+91 98765-43210', driverPhone: '+91 98765-12345' }
+    { id: '1', plate: 'KA-04-MN-3001', model: 'Volvo FH16', year: 2023, ownerPhone: '+91 98765-43210', driverPhone: '+91 98765-12345' },
+    { id: '2', plate: 'MH-12-PQ-8921', model: 'Tata Signa 5530', year: 2022, ownerPhone: '+91 98123-45678', driverPhone: '+91 98987-65432' }
   ];
   repairs = [
-    { id: 'r1', truckId: '1', date: '2026-08-05', description: 'Oil & Filter Change', materials: 'Synthetic 15W-40 Oil 10L, Oil Filter element', cost: 350.00, status: 'completed', photoUrl: '' },
-    { id: 'r2', truckId: '1', date: '2026-08-15', description: 'Front Brake Replacement', materials: '2x Heavy Duty Brake Pads, 1x Front Rotor', cost: 1200.00, status: 'completed', photoUrl: '' },
-    { id: 'r3', truckId: '2', date: '2026-08-20', description: 'Transmission Diagnostic', materials: 'Sensor wiring kit, Transmission Fluid', cost: 450.00, status: 'in-progress', photoUrl: '' }
+    { id: 'r1', truckId: '1', date: '2026-08-05', description: 'Engine Oil & Filter Service', materials: '15W-40 Synthetic Oil 10L, Oil Filter', cost: 12500.00, status: 'completed', photoUrl: '' },
+    { id: 'r2', truckId: '1', date: '2026-08-15', description: 'Front Heavy Duty Brake Shoe', materials: '2x Brake Lining Set, Drum Servicing', cost: 28000.00, status: 'completed', photoUrl: '' },
+    { id: 'r3', truckId: '2', date: '2026-08-20', description: 'Clutch Assembly Replacement', materials: 'Clutch Plate 395mm, Release Bearing', cost: 34500.00, status: 'in-progress', photoUrl: '' }
   ];
   revenues = [
-    { id: 'rev1', date: '2026-08-05', amount: 1800.00, truckId: '1', notes: 'Interstate Cargo Route' },
-    { id: 'rev2', date: '2026-08-15', amount: 950.00, truckId: '1', notes: 'Local Logistics Hub' },
-    { id: 'rev3', date: '2026-08-20', amount: 2400.00, truckId: '2', notes: 'Heavy Equipment Transport' },
-    { id: 'rev4', date: '2026-08-22', amount: 1500.00, truckId: '2', notes: 'Port Container Dispatch' }
+    { id: 'rev1', date: '2026-08-05', amount: 85000.00, truckId: '1', notes: 'Bengaluru to Mumbai freight' },
+    { id: 'rev2', date: '2026-08-15', amount: 42000.00, truckId: '1', notes: 'Local logistics haul' },
+    { id: 'rev3', date: '2026-08-20', amount: 110000.00, truckId: '2', notes: 'Industrial machinery transport' }
   ];
   renderTrucks(trucks);
   renderCalendar();
   populateTruckDropdowns();
 }
 
-// Fetch Data from Firestore
-function fetchTrucks() {
-  if (typeof db === 'undefined') return;
-  db.collection('trucks').onSnapshot((snapshot) => {
-    trucks = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+// Fetch Data Functions from Supabase
+async function fetchTrucks() {
+  if (typeof supabaseClient === 'undefined') return;
+  const { data, error } = await supabaseClient.from('trucks').select('*').order('created_at', { ascending: false });
+  if (!error && data) {
+    trucks = data.map(t => ({
+      id: t.id,
+      plate: t.plate,
+      model: t.model,
+      year: t.year,
+      ownerPhone: t.owner_phone,
+      driverPhone: t.driver_phone
+    }));
     renderTrucks(trucks);
     populateTruckDropdowns();
-  }, () => loadDemoData());
+  }
 }
 
-function fetchRepairs() {
-  if (typeof db === 'undefined') return;
-  db.collection('repairs').onSnapshot((snapshot) => {
-    repairs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+async function fetchRepairs() {
+  if (typeof supabaseClient === 'undefined') return;
+  const { data, error } = await supabaseClient.from('repairs').select('*').order('date', { ascending: false });
+  if (!error && data) {
+    repairs = data.map(r => ({
+      id: r.id,
+      truckId: r.truck_id,
+      date: r.date,
+      description: r.description,
+      materials: r.materials,
+      cost: parseFloat(r.cost),
+      status: r.status,
+      photoUrl: r.photo_url
+    }));
     if (activeTruckId) fetchRepairsForTruck(activeTruckId);
     renderCalendar();
-  });
+  }
 }
 
-function fetchRevenues() {
-  if (typeof db === 'undefined') return;
-  db.collection('revenues').onSnapshot((snapshot) => {
-    revenues = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+async function fetchRevenues() {
+  if (typeof supabaseClient === 'undefined') return;
+  const { data, error } = await supabaseClient.from('revenues').select('*').order('date', { ascending: false });
+  if (!error && data) {
+    revenues = data.map(r => ({
+      id: r.id,
+      date: r.date,
+      amount: parseFloat(r.amount),
+      truckId: r.truck_id,
+      notes: r.notes
+    }));
     renderCalendar();
-  });
+  }
 }
 
 // Populate Select Truck Dropdowns
@@ -197,7 +221,7 @@ function editCurrentTruck() {
   if (activeTruckId) openAddTruckModal(activeTruckId);
 }
 
-// Fetch Repair History for Selected Vehicle
+// Filter Repairs for Selected Truck
 function fetchRepairsForTruck(truckId) {
   const filtered = repairs.filter(r => r.truckId === truckId);
   renderRepairsTree(filtered);
@@ -223,7 +247,7 @@ function renderRepairsTree(repairList) {
           <div class="meta-info">${item.date}</div>
         </div>
         <div class="job-right-side">
-          <div class="job-total">$${parseFloat(item.cost).toFixed(2)}</div>
+          <div class="job-total">${formatRupees(item.cost)}</div>
           <button class="btn-icon" onclick="openAddRepairModal('${item.id}')" title="Edit Repair">✏️</button>
           <button class="btn-icon text-red" onclick="deleteRepair('${item.id}')" title="Delete Repair">🗑️</button>
         </div>
@@ -243,7 +267,7 @@ function renderRepairsTree(repairList) {
   `).join('');
 }
 
-// Modal Toggle Controllers
+// Modal Operations
 function openAddTruckModal(truckId = null) {
   const modal = document.getElementById('modal-add-truck');
   const title = document.getElementById('modal-truck-title');
@@ -326,166 +350,181 @@ function openPhotoModal(src) {
   document.getElementById('modal-photo').classList.remove('hidden');
 }
 
-// Handlers for Truck CRUD
-function handleAddTruck(e) {
+// Truck CRUD
+async function handleAddTruck(e) {
   e.preventDefault();
-  const id = document.getElementById('truck-edit-id').value;
-  const plate = document.getElementById('truck-plate').value.trim();
-  const model = document.getElementById('truck-model').value.trim();
-  const year = document.getElementById('truck-year').value.trim();
-  const ownerPhone = document.getElementById('truck-owner-phone').value.trim();
-  const driverPhone = document.getElementById('truck-driver-phone').value.trim();
+  const id = document.getElementById('truck-edit-id').value || Date.now().toString();
+  const payload = {
+    id,
+    plate: document.getElementById('truck-plate').value.trim(),
+    model: document.getElementById('truck-model').value.trim() || null,
+    year: document.getElementById('truck-year').value ? parseInt(document.getElementById('truck-year').value) : null,
+    owner_phone: document.getElementById('truck-owner-phone').value.trim() || null,
+    driver_phone: document.getElementById('truck-driver-phone').value.trim() || null
+  };
 
-  const data = { plate, model, year, ownerPhone, driverPhone };
-
-  if (id) {
-    if (typeof db !== 'undefined') {
-      db.collection('trucks').doc(id).update(data);
-    } else {
-      const idx = trucks.findIndex(t => t.id === id);
-      if (idx !== -1) trucks[idx] = { id, ...data };
+  if (typeof supabaseClient !== 'undefined') {
+    const { error } = await supabaseClient.from('trucks').upsert([payload]);
+    if (error) {
+      showToast('Failed to save truck: ' + error.message, 'error');
+      return;
     }
-    showToast('Truck profile updated!', 'success');
+    await fetchTrucks();
   } else {
-    const newId = Date.now().toString();
-    if (typeof db !== 'undefined') {
-      db.collection('trucks').add({ id: newId, ...data });
-    } else {
-      trucks.push({ id: newId, ...data });
-    }
-    showToast('Truck added successfully!', 'success');
+    const idx = trucks.findIndex(t => t.id === id);
+    const formatted = {
+      id,
+      plate: payload.plate,
+      model: payload.model,
+      year: payload.year,
+      ownerPhone: payload.owner_phone,
+      driverPhone: payload.driver_phone
+    };
+    if (idx !== -1) trucks[idx] = formatted;
+    else trucks.unshift(formatted);
+    renderTrucks(trucks);
+    populateTruckDropdowns();
   }
-  
-  renderTrucks(trucks);
-  populateTruckDropdowns();
+
+  showToast('Truck saved successfully!', 'success');
   closeModal('modal-add-truck');
-  if (activeTruckId) openTruckDetail(activeTruckId);
+  if (activeTruckId === id) openTruckDetail(activeTruckId);
 }
 
-function deleteTruck(truckId) {
+async function deleteTruck(truckId) {
   if (!confirm('Are you sure you want to delete this truck and its history?')) return;
-  if (typeof db !== 'undefined') {
-    db.collection('trucks').doc(truckId).delete();
+  if (typeof supabaseClient !== 'undefined') {
+    const { error } = await supabaseClient.from('trucks').delete().eq('id', truckId);
+    if (error) {
+      showToast('Failed to delete truck: ' + error.message, 'error');
+      return;
+    }
+    await fetchTrucks();
   } else {
     trucks = trucks.filter(t => t.id !== truckId);
     repairs = repairs.filter(r => r.truckId !== truckId);
+    renderTrucks(trucks);
+    populateTruckDropdowns();
   }
-  renderTrucks(trucks);
-  populateTruckDropdowns();
   if (activeTruckId === truckId) switchView('fleet');
   showToast('Truck deleted.', 'error');
 }
 
-// Handlers for Repair CRUD with Image File Converter
-function handleAddRepair(e) {
+// Repair CRUD
+async function handleAddRepair(e) {
   e.preventDefault();
-  const id = document.getElementById('repair-edit-id').value;
+  const id = document.getElementById('repair-edit-id').value || Date.now().toString();
   const date = document.getElementById('repair-date').value;
   const description = document.getElementById('repair-desc').value.trim();
-  const materials = document.getElementById('repair-materials').value.trim();
+  const materials = document.getElementById('repair-materials').value.trim() || null;
   const cost = parseFloat(document.getElementById('repair-cost').value);
   const status = document.getElementById('repair-status').value;
   const fileInput = document.getElementById('repair-photo');
 
-  const saveRepairData = (photoBase64 = '') => {
-    const repData = {
-      truckId: activeTruckId,
+  const saveRepairPayload = async (photoBase64 = '') => {
+    const payload = {
+      id,
+      truck_id: activeTruckId,
       date,
       description,
       materials,
       cost,
       status
     };
-    if (photoBase64) repData.photoUrl = photoBase64;
+    if (photoBase64) payload.photo_url = photoBase64;
 
-    if (id) {
-      if (typeof db !== 'undefined') {
-        db.collection('repairs').doc(id).update(repData);
-      } else {
-        const idx = repairs.findIndex(r => r.id === id);
-        if (idx !== -1) repairs[idx] = { ...repairs[idx], ...repData };
+    if (typeof supabaseClient !== 'undefined') {
+      const { error } = await supabaseClient.from('repairs').upsert([payload]);
+      if (error) {
+        showToast('Failed to save repair: ' + error.message, 'error');
+        return;
       }
-      showToast('Repair job updated!', 'success');
+      await fetchRepairs();
     } else {
-      const newId = Date.now().toString();
-      if (typeof db !== 'undefined') {
-        db.collection('repairs').add({ id: newId, ...repData });
-      } else {
-        repairs.push({ id: newId, photoUrl: photoBase64, ...repData });
-      }
-      showToast('Repair job logged!', 'success');
+      const idx = repairs.findIndex(r => r.id === id);
+      const repObj = { id, truckId: activeTruckId, date, description, materials, cost, status, photoUrl: photoBase64 || (repairs[idx]?.photoUrl || '') };
+      if (idx !== -1) repairs[idx] = repObj;
+      else repairs.unshift(repObj);
+      fetchRepairsForTruck(activeTruckId);
+      renderCalendar();
     }
 
-    fetchRepairsForTruck(activeTruckId);
-    renderCalendar();
+    showToast('Repair job logged!', 'success');
     closeModal('modal-add-repair');
   };
 
   if (fileInput.files && fileInput.files[0]) {
     const reader = new FileReader();
     reader.onload = function(evt) {
-      saveRepairData(evt.target.result);
+      saveRepairPayload(evt.target.result);
     };
     reader.readAsDataURL(fileInput.files[0]);
   } else {
     const existing = repairs.find(r => r.id === id);
-    saveRepairData(existing ? existing.photoUrl : '');
+    saveRepairPayload(existing ? existing.photoUrl : '');
   }
 }
 
-function deleteRepair(repairId) {
+async function deleteRepair(repairId) {
   if (!confirm('Are you sure you want to delete this repair record?')) return;
-  if (typeof db !== 'undefined') {
-    db.collection('repairs').doc(repairId).delete();
+  if (typeof supabaseClient !== 'undefined') {
+    const { error } = await supabaseClient.from('repairs').delete().eq('id', repairId);
+    if (error) {
+      showToast('Failed to delete repair: ' + error.message, 'error');
+      return;
+    }
+    await fetchRepairs();
   } else {
     repairs = repairs.filter(r => r.id !== repairId);
+    fetchRepairsForTruck(activeTruckId);
+    renderCalendar();
   }
-  fetchRepairsForTruck(activeTruckId);
-  renderCalendar();
   showToast('Repair entry deleted.', 'error');
 }
 
-// Handlers for Revenue CRUD
-function handleAddRevenue(e) {
+// Revenue CRUD
+async function handleAddRevenue(e) {
   e.preventDefault();
-  const id = document.getElementById('revenue-edit-id').value;
+  const id = document.getElementById('revenue-edit-id').value || Date.now().toString();
   const date = document.getElementById('revenue-date').value;
   const amount = parseFloat(document.getElementById('revenue-amount').value);
-  const truckId = document.getElementById('revenue-truck').value;
-  const notes = document.getElementById('revenue-notes').value.trim();
+  const truckId = document.getElementById('revenue-truck').value || null;
+  const notes = document.getElementById('revenue-notes').value.trim() || null;
 
-  const revData = { date, amount, truckId, notes };
+  const payload = { id, date, amount, truck_id: truckId, notes };
 
-  if (id) {
-    if (typeof db !== 'undefined') {
-      db.collection('revenues').doc(id).update(revData);
-    } else {
-      const idx = revenues.findIndex(r => r.id === id);
-      if (idx !== -1) revenues[idx] = { id, ...revData };
+  if (typeof supabaseClient !== 'undefined') {
+    const { error } = await supabaseClient.from('revenues').upsert([payload]);
+    if (error) {
+      showToast('Failed to save revenue: ' + error.message, 'error');
+      return;
     }
-    showToast('Revenue record updated!', 'success');
+    await fetchRevenues();
   } else {
-    const newId = Date.now().toString();
-    if (typeof db !== 'undefined') {
-      db.collection('revenues').add({ id: newId, ...revData });
-    } else {
-      revenues.push({ id: newId, ...revData });
-    }
-    showToast('Revenue logged!', 'success');
+    const idx = revenues.findIndex(r => r.id === id);
+    const revObj = { id, date, amount, truckId, notes };
+    if (idx !== -1) revenues[idx] = revObj;
+    else revenues.unshift(revObj);
+    renderCalendar();
   }
 
-  renderCalendar();
+  showToast('Revenue record updated!', 'success');
   closeModal('modal-add-revenue');
 }
 
-function deleteRevenue(revenueId) {
+async function deleteRevenue(revenueId) {
   if (!confirm('Delete this revenue entry?')) return;
-  if (typeof db !== 'undefined') {
-    db.collection('revenues').doc(revenueId).delete();
+  if (typeof supabaseClient !== 'undefined') {
+    const { error } = await supabaseClient.from('revenues').delete().eq('id', revenueId);
+    if (error) {
+      showToast('Failed to delete revenue: ' + error.message, 'error');
+      return;
+    }
+    await fetchRevenues();
   } else {
     revenues = revenues.filter(r => r.id !== revenueId);
+    renderCalendar();
   }
-  renderCalendar();
   showToast('Revenue deleted.', 'error');
 }
 
@@ -551,11 +590,11 @@ function renderCalendar() {
         <button class="btn-add-day" onclick="openAddRevenueModal('${dateFormatted}')" title="Log Income">+</button>
       </div>
       <div class="day-body">
-        ${dayRevTotal > 0 ? `<div class="day-stat rev">+${dayRevTotal.toFixed(0)}</div>` : ''}
-        ${dayExpTotal > 0 ? `<div class="day-stat exp">-${dayExpTotal.toFixed(0)}</div>` : ''}
+        ${dayRevTotal > 0 ? `<div class="day-stat rev">+₹${dayRevTotal.toLocaleString('en-IN')}</div>` : ''}
+        ${dayExpTotal > 0 ? `<div class="day-stat exp">-₹${dayExpTotal.toLocaleString('en-IN')}</div>` : ''}
         ${(dayRevTotal > 0 || dayExpTotal > 0) ? `
           <div class="day-stat net ${dayNet >= 0 ? 'text-green' : 'text-red'}">
-            ${dayNet >= 0 ? '+' : ''}${dayNet.toFixed(0)}
+            ${dayNet >= 0 ? '+' : ''}₹${Math.abs(dayNet).toLocaleString('en-IN')}
           </div>
         ` : ''}
       </div>
@@ -566,11 +605,11 @@ function renderCalendar() {
 
   // Update Summary Banners
   const netPnL = mTotalRevenue - mTotalExpenses;
-  document.getElementById('month-total-revenue').innerText = `$${mTotalRevenue.toFixed(2)}`;
-  document.getElementById('month-total-expenses').innerText = `$${mTotalExpenses.toFixed(2)}`;
+  document.getElementById('month-total-revenue').innerText = formatRupees(mTotalRevenue);
+  document.getElementById('month-total-expenses').innerText = formatRupees(mTotalExpenses);
   
   const netElem = document.getElementById('month-net-pnl');
-  netElem.innerText = `${netPnL >= 0 ? '+' : ''}$${netPnL.toFixed(2)}`;
+  netElem.innerText = `${netPnL >= 0 ? '+' : '-'}${formatRupees(Math.abs(netPnL))}`;
   netElem.className = `val ${netPnL >= 0 ? 'text-green' : 'text-red'}`;
 }
 
@@ -587,10 +626,11 @@ function showToast(message, type = 'success') {
   setTimeout(() => toast.remove(), 3000);
 }
 
-// Logout Placeholder
-function handleLogout() {
-  if (typeof firebase !== 'undefined' && firebase.auth) {
-    firebase.auth().signOut().then(() => location.reload());
+// Sign out handler
+async function handleLogout() {
+  if (typeof supabaseClient !== 'undefined' && supabaseClient.auth) {
+    await supabaseClient.auth.signOut();
+    location.reload();
   } else {
     showToast('Signed out demo mode.', 'success');
   }
