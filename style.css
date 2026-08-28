@@ -2,7 +2,9 @@
    Truck Repair Tracker — Design System & Stylesheet
    ============================================================ */
 
+/* 1. CSS VARIABLES & THEME ENGINE */
 :root {
+  /* Light Theme Default */
   --bg-main: #f8fafc;
   --bg-card: #ffffff;
   --bg-sidebar: #0f172a;
@@ -17,10 +19,15 @@
   --primary-light: #eff6ff;
   
   --amber: #f59e0b;
+  --amber-hover: #d97706;
   --amber-light: #fef3c7;
+  
   --red: #ef4444;
+  --red-hover: #dc2626;
   --red-light: #fee2e2;
+  
   --green: #10b981;
+  --green-hover: #059669;
   --green-light: #d1fae5;
   
   --radius-sm: 6px;
@@ -28,46 +35,108 @@
   --radius-lg: 16px;
   --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
   --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
 }
 
+[data-theme="dark"] {
+  --bg-main: #090d16;
+  --bg-card: #131c2e;
+  --bg-sidebar: #0a0f1d;
+  --border-color: #1e293b;
+  
+  --ink-main: #f8fafc;
+  --ink-soft: #94a3b8;
+  --ink-light: #64748b;
+  
+  --primary: #3b82f6;
+  --primary-hover: #2563eb;
+  --primary-light: rgba(59, 130, 246, 0.15);
+  
+  --amber: #f59e0b;
+  --amber-hover: #d97706;
+  --amber-light: rgba(245, 158, 11, 0.15);
+  
+  --red: #ef4444;
+  --red-hover: #dc2626;
+  --red-light: rgba(239, 68, 68, 0.15);
+  
+  --green: #22c55e;
+  --green-hover: #16a34a;
+  --green-light: rgba(34, 197, 94, 0.15);
+  
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.4);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.5);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.6);
+}
+
+/* 2. BASE STYLES & RESET */
 * {
   box-sizing: border-box;
   margin: 0;
   padding: 0;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
 }
 
 body {
   background-color: var(--bg-main);
   color: var(--ink-main);
-  display: flex;
   min-height: 100vh;
+  position: relative;
+  transition: background-color 0.2s ease, color 0.2s ease;
 }
 
-/* Base Layout & Sidebar */
-#app-layout {
+.hidden {
+  display: none !important;
+}
+
+/* 3. LAYOUT & SIDEBAR STRUCTURE */
+#app-layout, .app-layout {
   display: flex;
+  min-height: 100vh;
   width: 100%;
 }
 
 .sidebar {
   width: 260px;
   background-color: var(--bg-sidebar);
-  color: #fff;
+  color: #ffffff;
   display: flex;
   flex-direction: column;
   padding: 24px 16px;
   flex-shrink: 0;
+  border-right: 1px solid var(--border-color);
 }
 
-.sidebar-brand {
-  font-size: 1.25rem;
-  font-weight: 700;
+.auth-brand, .sidebar-brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
   margin-bottom: 32px;
-  color: #fff;
 }
 
-.sidebar-nav {
+.auth-brand .plate, .sidebar-brand .plate {
+  font-family: 'Archivo Black', -apple-system, sans-serif;
+  background: var(--primary);
+  color: #ffffff;
+  padding: 6px 10px;
+  border-radius: var(--radius-sm);
+  font-size: 1.1rem;
+  font-weight: 700;
+}
+
+.auth-brand h1, .sidebar-brand h1 {
+  font-size: 1.1rem;
+  font-weight: 700;
+  line-height: 1.2;
+  color: #ffffff;
+}
+
+.auth-brand .sub, .sidebar-brand .sub {
+  font-size: 0.75rem;
+  color: #94a3b8;
+}
+
+.nav-menu, .sidebar-nav {
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -81,68 +150,141 @@ body {
   padding: 12px 16px;
   text-align: left;
   font-size: 0.95rem;
+  font-weight: 500;
   border-radius: var(--radius-sm);
   cursor: pointer;
   transition: all 0.2s ease;
 }
 
 .nav-btn:hover {
-  background: rgba(255, 255, 255, 0.05);
-  color: #fff;
+  background: rgba(255, 255, 255, 0.06);
+  color: #ffffff;
 }
 
 .nav-btn.active {
   background: var(--primary);
-  color: #fff;
+  color: #ffffff;
 }
 
 .sidebar-footer {
-  border-top: 1px solid #334155;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
   padding-top: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
 }
 
-#sidebar-user {
+#sidebar-user, .user-email {
   font-size: 0.85rem;
   color: #94a3b8;
   word-break: break-all;
-  margin-bottom: 12px;
+  margin-bottom: 4px;
 }
 
-/* Main Content Area */
+/* 4. MAIN CONTENT VIEW AREA */
 .main-content {
   flex-grow: 1;
   padding: 32px;
   overflow-y: auto;
 }
 
-.hidden {
-  display: none !important;
+.view-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
 }
 
-/* Utilities & Buttons */
+.view-header h2 {
+  font-size: 1.5rem;
+  font-weight: 700;
+}
+
+.actions {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.input-search {
+  padding: 8px 14px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  color: var(--ink-main);
+  font-size: 0.9rem;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.input-search:focus {
+  border-color: var(--primary);
+}
+
+/* 5. BUTTONS & UTILITIES */
 .btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   padding: 8px 16px;
   font-size: 0.9rem;
-  font-weight: 500;
+  font-weight: 600;
   border-radius: var(--radius-sm);
   border: 1px solid transparent;
   cursor: pointer;
   transition: all 0.2s;
 }
 
-.btn-primary { background-color: var(--primary); color: #fff; }
+.btn-primary { background-color: var(--primary); color: #ffffff; }
 .btn-primary:hover { background-color: var(--primary-hover); }
 
+.btn-amber { background-color: var(--amber); color: #ffffff; }
+.btn-amber:hover { background-color: var(--amber-hover); }
+
 .btn-ghost { background: transparent; border-color: var(--border-color); color: var(--ink-main); }
-.btn-ghost:hover { background: #f1f5f9; }
+.btn-ghost:hover { background: var(--border-color); }
+
+.btn-danger { color: var(--red); border-color: var(--red); }
+.btn-danger:hover { background: var(--red-light); }
 
 .btn-sm { padding: 6px 12px; font-size: 0.82rem; }
 
-/* Grid & Cards */
-.grid {
+/* 6. THEME TOGGLE MECHANISM */
+.theme-toggle-wrap {
+  position: absolute;
+  top: 16px;
+  right: 20px;
+  z-index: 100;
+}
+
+.theme-toggle {
+  width: 44px;
+  height: 24px;
+  background: var(--border-color);
+  border-radius: 12px;
+  border: none;
+  cursor: pointer;
+  position: relative;
+  padding: 2px;
+  transition: background 0.2s;
+}
+
+.theme-toggle .knob {
+  width: 20px;
+  height: 20px;
+  background: #ffffff;
+  border-radius: 50%;
+  display: block;
+  transition: transform 0.2s;
+}
+
+[data-theme="dark"] .theme-toggle .knob {
+  transform: translateX(20px);
+  background: var(--primary);
+}
+
+/* 7. GRID & TRUCK CARDS */
+.grid, .trucks-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
   gap: 20px;
@@ -164,7 +306,8 @@ body {
   box-shadow: var(--shadow-md);
 }
 
-.truck-card .plate {
+.plate, .plate-title, .truck-card .plate {
+  font-family: 'IBM Plex Mono', monospace;
   display: inline-block;
   font-size: 1.2rem;
   font-weight: 700;
@@ -176,25 +319,59 @@ body {
   margin-bottom: 12px;
 }
 
-.truck-card .meta {
+.truck-card .meta, .meta-info {
   font-size: 0.88rem;
   color: var(--ink-soft);
   line-height: 1.5;
 }
 
-/* Nested Repair Tree Structure */
+/* 8. DETAIL VIEW & REPAIRS TREE */
+.detail-header { margin-bottom: 24px; }
+
+.truck-summary-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 20px;
+  margin-top: 12px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.repairs-section {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 24px;
+}
+
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
 .tree-year-block { margin-bottom: 24px; }
-.tree-year-heading { font-size: 1.1rem; color: var(--ink-main); margin-bottom: 12px; border-bottom: 2px solid var(--border-color); padding-bottom: 4px; }
+.tree-year-heading {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--ink-main);
+  margin-bottom: 12px;
+  border-bottom: 2px solid var(--border-color);
+  padding-bottom: 4px;
+}
 
 .tree-month-block { margin-left: 12px; margin-bottom: 16px; }
-.tree-month-heading { font-size: 0.95rem; color: var(--ink-soft); margin-bottom: 8px; }
+.tree-month-heading { font-size: 0.95rem; font-weight: 600; color: var(--ink-soft); margin-bottom: 8px; }
 
 .tree-day-block { margin-left: 16px; margin-bottom: 12px; }
 .tree-day-heading { font-size: 0.88rem; color: var(--ink-light); margin-bottom: 6px; }
 
-/* Job Card & Line Items */
+/* 9. JOB CARD & LINE ITEMS */
 .job-row {
-  background: var(--bg-card);
+  background: var(--bg-main);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-md);
   padding: 16px;
@@ -235,7 +412,7 @@ body {
   border: 1px solid var(--border-color);
 }
 
-/* Badges */
+/* 10. BADGES */
 .badge {
   display: inline-block;
   padding: 2px 8px;
@@ -249,7 +426,7 @@ body {
 .badge-completed { background: var(--green-light); color: var(--green); }
 .badge-in-progress { background: var(--primary-light); color: var(--primary); }
 
-/* Modals & Overlay */
+/* 11. MODALS & FORM CONTROLS */
 .modal-overlay {
   position: fixed;
   top: 0; left: 0; right: 0; bottom: 0;
@@ -258,18 +435,94 @@ body {
   align-items: center;
   justify-content: center;
   z-index: 1000;
+  backdrop-filter: blur(2px);
 }
 
-.modal {
-  background: #fff;
+.modal, .modal-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
   border-radius: var(--radius-lg);
   width: 100%;
   max-width: 480px;
   padding: 24px;
-  box-shadow: var(--shadow-md);
+  box-shadow: var(--shadow-lg);
 }
 
-/* Messages & Toast */
+.modal h3, .modal-card h3 {
+  margin-bottom: 16px;
+  font-size: 1.2rem;
+  color: var(--ink-main);
+}
+
+.field {
+  margin-bottom: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.field label {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--ink-soft);
+}
+
+.field input, .field select, .input-select {
+  padding: 8px 12px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  background: var(--bg-main);
+  color: var(--ink-main);
+  font-size: 0.9rem;
+  outline: none;
+}
+
+.field input:focus, .field select:focus {
+  border-color: var(--primary);
+}
+
+.helper-text { font-size: 0.75rem; color: var(--ink-light); }
+
+.modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+/* Photo Viewer Modal */
+.modal-photo-card {
+  max-width: 80vw;
+  width: auto;
+  padding: 12px;
+  position: relative;
+}
+
+.modal-photo-card img {
+  max-width: 100%;
+  max-height: 80vh;
+  border-radius: var(--radius-sm);
+  display: block;
+}
+
+.close-btn {
+  position: absolute;
+  top: -12px;
+  right: -12px;
+  background: var(--red);
+  color: #ffffff;
+  border: none;
+  border-radius: 50%;
+  width: 28px;
+  height: 28px;
+  font-size: 1.2rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* 12. MESSAGES, TOASTS & EMPTY STATES */
 #toast-container {
   position: fixed;
   bottom: 20px;
@@ -282,17 +535,33 @@ body {
 
 .toast {
   background: var(--bg-sidebar);
-  color: #fff;
+  color: #ffffff;
   padding: 12px 20px;
   border-radius: var(--radius-sm);
   font-size: 0.88rem;
   box-shadow: var(--shadow-md);
+  border-left: 4px solid var(--primary);
 }
 
-.toast.error { background: var(--red); }
-.toast.success { background: var(--green); }
+.toast.error { border-left-color: var(--red); background: var(--red-hover); }
+.toast.success { border-left-color: var(--green); }
 
-.msg { font-size: 0.85rem; margin-top: 8px; display: none; }
+.empty-state {
+  text-align: center;
+  padding: 40px;
+  color: var(--ink-light);
+  font-size: 0.95rem;
+}
+
+.msg {
+  font-size: 0.85rem;
+  padding: 8px 12px;
+  border-radius: var(--radius-sm);
+  margin-top: 8px;
+  margin-bottom: 12px;
+  display: none;
+}
+
 .msg.show { display: block; }
-.msg-error { color: var(--red); }
-.msg-success { color: var(--green); }
+.msg-error { background: var(--red-light); color: var(--red); }
+.msg-success { background: var(--green-light); color: var(--green); }
