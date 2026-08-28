@@ -102,15 +102,15 @@
         <div class="pnl-summary-bar">
           <div class="pnl-card">
             <span class="label">Monthly Revenue</span>
-            <span id="month-total-revenue" class="val text-green">$0.00</span>
+            <span id="month-total-revenue" class="val text-green">₹0.00</span>
           </div>
           <div class="pnl-card">
             <span class="label">Monthly Repair Costs</span>
-            <span id="month-total-expenses" class="val text-red">$0.00</span>
+            <span id="month-total-expenses" class="val text-red">₹0.00</span>
           </div>
           <div class="pnl-card">
             <span class="label">Net Profit / Loss</span>
-            <span id="month-net-pnl" class="val">$0.00</span>
+            <span id="month-net-pnl" class="val">₹0.00</span>
           </div>
         </div>
 
@@ -146,7 +146,7 @@
         <input type="hidden" id="truck-edit-id">
         <div class="field">
           <label for="truck-plate">License Plate / ID *</label>
-          <input type="text" id="truck-plate" required placeholder="e.g. AB-123-CD">
+          <input type="text" id="truck-plate" required placeholder="e.g. KA-01-AB-1234">
         </div>
         <div class="field">
           <label for="truck-model">Make / Model</label>
@@ -154,15 +154,15 @@
         </div>
         <div class="field">
           <label for="truck-year">Year</label>
-          <input type="number" id="truck-year" placeholder="2022">
+          <input type="number" id="truck-year" placeholder="2024">
         </div>
         <div class="field">
           <label for="truck-owner-phone">Owner Phone Number</label>
-          <input type="tel" id="truck-owner-phone" placeholder="e.g. +1 555-0192">
+          <input type="tel" id="truck-owner-phone" placeholder="e.g. +91 98765 43210">
         </div>
         <div class="field">
           <label for="truck-driver-phone">Driver Phone Number</label>
-          <input type="tel" id="truck-driver-phone" placeholder="e.g. +1 555-0144">
+          <input type="tel" id="truck-driver-phone" placeholder="e.g. +91 98765 12345">
         </div>
         <div id="truck-msg" class="msg msg-error"></div>
         <div class="modal-footer">
@@ -192,7 +192,7 @@
           <textarea id="repair-materials" rows="2" placeholder="e.g. 2x Heavy Brake Pads, 1x Rotor Disc, Synthetic Oil 5L"></textarea>
         </div>
         <div class="field">
-          <label for="repair-cost">Total Cost ($) *</label>
+          <label for="repair-cost">Total Cost (₹) *</label>
           <input type="number" step="0.01" id="repair-cost" required placeholder="0.00">
         </div>
         <div class="field">
@@ -204,7 +204,7 @@
           </select>
         </div>
         <div class="field">
-          <label for="repair-photo">Attach Receipt / Material Photo (Any Image Format)</label>
+          <label for="repair-photo">Attach Receipt / Material Photo</label>
           <input type="file" id="repair-photo" accept="image/*" class="file-input">
           <span class="helper-text">Accepts PNG, JPG, WebP, HEIC, etc.</span>
         </div>
@@ -228,7 +228,7 @@
           <input type="date" id="revenue-date" required>
         </div>
         <div class="field">
-          <label for="revenue-amount">Revenue Amount ($) *</label>
+          <label for="revenue-amount">Revenue Amount (₹) *</label>
           <input type="number" step="0.01" id="revenue-amount" required placeholder="0.00">
         </div>
         <div class="field">
@@ -239,7 +239,7 @@
         </div>
         <div class="field">
           <label for="revenue-notes">Notes / Trip Details</label>
-          <input type="text" id="revenue-notes" placeholder="e.g. Long haul freight route delivery">
+          <input type="text" id="revenue-notes" placeholder="e.g. Bengaluru to Chennai freight transport">
         </div>
         <div id="revenue-msg" class="msg msg-error"></div>
         <div class="modal-footer">
@@ -261,12 +261,9 @@
   <!-- Toast Container -->
   <div id="toast-container"></div>
 
-  <!-- Firebase & Application Scripts -->
-  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
-  
-  <script src="firebase-config.js"></script>
+  <!-- Supabase SDK & Application Scripts -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="supabase-config.js"></script>
   <script src="app.js"></script>
 </body>
 </html>
