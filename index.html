@@ -16,7 +16,6 @@
     <div class="modal-card">
       <h2>Truck Tracker</h2>
       <p class="sub" style="margin-bottom: 20px; color: #888;">Sign in to access your fleet database</p>
-      
       <form id="form-auth" onsubmit="handleAuthSubmit(event)">
         <div class="field">
           <label for="auth-email">Email Address</label>
@@ -26,8 +25,7 @@
           <label for="auth-password">Password</label>
           <input type="password" id="auth-password" required placeholder="••••••••">
         </div>
-        <div id="auth-error" class="msg msg-error" style="color: #ff5555; margin-bottom: 15px;"></div>
-        
+        <div id="auth-error" class="msg msg-error" style="color: #ff5555; margin-bottom: 15px; display: none;"></div>
         <div style="display: flex; gap: 10px;">
           <button type="submit" id="btn-login" class="btn btn-amber" style="flex: 1;">Sign In</button>
           <button type="button" onclick="handleSignUp()" class="btn btn-ghost" style="flex: 1;">Sign Up</button>
@@ -44,246 +42,48 @@
   </div>
 
   <div id="app-layout" class="app-layout hidden">
-    <!-- Sidebar Navigation -->
     <aside class="sidebar">
       <div class="sidebar-brand">
         <span class="plate">TT</span>
-        <div>
-          <h1>Truck Tracker</h1>
-          <span class="sub">Fleet & Maintenance</span>
-        </div>
+        <div><h1>Truck Tracker</h1><span class="sub">Fleet & Maintenance</span></div>
       </div>
-
       <nav class="sidebar-nav">
         <button class="nav-btn active" id="nav-fleet" onclick="switchView('fleet')">🚛 Fleet Dashboard</button>
         <button class="nav-btn" id="nav-calendar" onclick="switchView('calendar')">📅 Revenue Calendar</button>
         <button class="nav-btn" id="nav-analytics" onclick="switchView('analytics')">📊 Cost Analytics</button>
       </nav>
-
       <div class="sidebar-footer">
         <div id="sidebar-user" class="user-email">Logged in</div>
         <button class="btn btn-ghost btn-sm" onclick="handleLogout()">Sign Out</button>
       </div>
     </aside>
-
-    <!-- Main Content Panel -->
     <main class="main-content">
-      
-      <!-- View 1: Fleet Dashboard -->
       <section id="view-fleet">
-        <div class="view-header">
-          <h2>Fleet Overview</h2>
-          <div class="actions">
-            <input type="text" id="search-plate" class="input-search" placeholder="Search plate or phone..." oninput="filterTrucks()">
-            <button class="btn btn-amber" onclick="openAddTruckModal()">+ Add Truck</button>
-          </div>
-        </div>
-
-        <div id="trucks-container" class="trucks-grid">
-          <!-- Truck Cards Render Here -->
-        </div>
+        <div class="view-header"><h2>Fleet Overview</h2><div class="actions"><input type="text" id="search-plate" class="input-search" placeholder="Search plate or phone..." oninput="filterTrucks()"><button class="btn btn-amber" onclick="openAddTruckModal()">+ Add Truck</button></div></div>
+        <div id="trucks-container" class="trucks-grid"></div>
       </section>
-
-      <!-- View 2: Truck Detail View -->
       <section id="view-truck-detail" class="hidden">
-        <div class="detail-header">
-          <button class="btn btn-ghost btn-sm" onclick="switchView('fleet')">← Back to Fleet</button>
-          <div class="truck-summary-card">
-            <div>
-              <span id="detail-plate" class="plate-title">---</span>
-              <div id="detail-meta" class="meta-info">Loading truck info...</div>
-              <div id="detail-contacts" class="contact-chips"></div>
-            </div>
-            <div class="action-btns">
-              <button class="btn btn-ghost btn-sm" onclick="editCurrentTruck()">Edit Truck</button>
-              <button class="btn btn-amber" onclick="openAddRepairModal()">+ Log Repair Job</button>
-            </div>
-          </div>
-        </div>
-
-        <div class="repairs-section">
-          <div class="section-header">
-            <h3>Maintenance, Materials & Repair History</h3>
-          </div>
-          <div id="repairs-tree-container">
-            <!-- Repair Tree Renders Here -->
-          </div>
-        </div>
+        <div class="detail-header"><button class="btn btn-ghost btn-sm" onclick="switchView('fleet')">← Back to Fleet</button><div class="truck-summary-card"><div><span id="detail-plate" class="plate-title">---</span><div id="detail-meta" class="meta-info">Loading truck info...</div><div id="detail-contacts" class="contact-chips"></div></div><div class="action-btns"><button class="btn btn-ghost btn-sm" onclick="editCurrentTruck()">Edit Truck</button><button class="btn btn-amber" onclick="openAddRepairModal()">+ Log Repair Job</button></div></div></div>
+        <div class="repairs-section"><div class="section-header"><h3>Maintenance, Materials & Repair History</h3></div><div id="repairs-tree-container"></div></div>
       </section>
-
-      <!-- View 3: Revenue Calendar -->
       <section id="view-calendar" class="hidden">
-        <div class="view-header">
-          <h2>Financial & Revenue Calendar</h2>
-          <div class="actions">
-            <button class="btn btn-ghost btn-sm" onclick="changeMonth(-1)">◀ Previous</button>
-            <span id="calendar-month-title" class="month-title">Month Year</span>
-            <button class="btn btn-ghost btn-sm" onclick="changeMonth(1)">Next ▶</button>
-            <button class="btn btn-amber" onclick="openAddRevenueModal()">+ Log Revenue</button>
-          </div>
-        </div>
-
-        <!-- Monthly Summary Cards -->
-        <div class="pnl-summary-bar">
-          <div class="pnl-card">
-            <span class="label">Monthly Revenue</span>
-            <span id="month-total-revenue" class="val text-green">₹0.00</span>
-          </div>
-          <div class="pnl-card">
-            <span class="label">Monthly Repair Costs</span>
-            <span id="month-total-expenses" class="val text-red">₹0.00</span>
-          </div>
-          <div class="pnl-card">
-            <span class="label">Net Profit / Loss</span>
-            <span id="month-net-pnl" class="val">₹0.00</span>
-          </div>
-        </div>
-
-        <!-- Calendar Grid View -->
-        <div class="calendar-wrapper">
-          <div class="calendar-header-days">
-            <div>Sun</div><div>Mon</div><div>Tue</div><div>Wed</div><div>Thu</div><div>Fri</div><div>Sat</div>
-          </div>
-          <div id="calendar-grid" class="calendar-grid">
-            <!-- Days render dynamically -->
-          </div>
-        </div>
+        <div class="view-header"><h2>Financial & Revenue Calendar</h2><div class="actions"><button class="btn btn-ghost btn-sm" onclick="changeMonth(-1)">◀ Previous</button><span id="calendar-month-title" class="month-title">Month Year</span><button class="btn btn-ghost btn-sm" onclick="changeMonth(1)">Next ▶</button><button class="btn btn-amber" onclick="openAddRevenueModal()">+ Log Revenue</button></div></div>
+        <div class="pnl-summary-bar"><div class="pnl-card"><span class="label">Monthly Revenue</span><span id="month-total-revenue" class="val text-green">₹0.00</span></div><div class="pnl-card"><span class="label">Monthly Repair Costs</span><span id="month-total-expenses" class="val text-red">₹0.00</span></div><div class="pnl-card"><span class="label">Net Profit / Loss</span><span id="month-net-pnl" class="val">₹0.00</span></div></div>
+        <div class="calendar-wrapper"><div class="calendar-header-days"><div>Sun</div><div>Mon</div><div>Tue</div><div>Wed</div><div>Thu</div><div>Fri</div><div>Sat</div></div><div id="calendar-grid" class="calendar-grid"></div></div>
       </section>
-
-      <!-- View 4: Analytics -->
-      <section id="view-analytics" class="hidden">
-        <div class="view-header">
-          <h2>Cost Analytics</h2>
-        </div>
-        <div class="repairs-section">
-          <p class="meta-info">Analytics and vehicle ROI summaries will display here.</p>
-        </div>
-      </section>
-
+      <section id="view-analytics" class="hidden"><div class="view-header"><h2>Cost Analytics</h2></div><div class="repairs-section"><p class="meta-info">Analytics and vehicle ROI summaries will display here.</p></div></section>
     </main>
   </div>
 
-  <!-- Modal: Add / Edit Truck -->
-  <div id="modal-add-truck" class="modal-overlay hidden">
-    <div class="modal-card">
-      <h3 id="modal-truck-title">Add New Truck</h3>
-      <form id="form-add-truck" onsubmit="handleAddTruck(event)">
-        <input type="hidden" id="truck-edit-id">
-        <div class="field">
-          <label for="truck-plate">License Plate / ID *</label>
-          <input type="text" id="truck-plate" required placeholder="e.g. KA-01-AB-1234">
-        </div>
-        <div class="field">
-          <label for="truck-model">Make / Model</label>
-          <input type="text" id="truck-model" placeholder="e.g. Volvo FH16">
-        </div>
-        <div class="field">
-          <label for="truck-year">Year</label>
-          <input type="number" id="truck-year" placeholder="2024">
-        </div>
-        <div class="field">
-          <label for="truck-owner-phone">Owner Phone Number</label>
-          <input type="tel" id="truck-owner-phone" placeholder="e.g. +91 98765 43210">
-        </div>
-        <div class="field">
-          <label for="truck-driver-phone">Driver Phone Number</label>
-          <input type="tel" id="truck-driver-phone" placeholder="e.g. +91 98765 12345">
-        </div>
-        <div class="modal-footer">
-          <button type="button" class="btn btn-ghost" onclick="closeModal('modal-add-truck')">Cancel</button>
-          <button type="submit" class="btn btn-amber">Save Truck</button>
-        </div>
-      </form>
-    </div>
-  </div>
-
-  <!-- Modal: Add / Edit Repair -->
-  <div id="modal-add-repair" class="modal-overlay hidden">
-    <div class="modal-card">
-      <h3 id="modal-repair-title">Log Repair Job</h3>
-      <form id="form-add-repair" onsubmit="handleAddRepair(event)">
-        <input type="hidden" id="repair-edit-id">
-        <div class="field">
-          <label for="repair-date">Date *</label>
-          <input type="date" id="repair-date" required>
-        </div>
-        <div class="field">
-          <label for="repair-desc">Description / Service *</label>
-          <input type="text" id="repair-desc" required placeholder="e.g. Brake pad & Rotor replacement">
-        </div>
-        <div class="field">
-          <label for="repair-materials">Materials & Parts Required</label>
-          <textarea id="repair-materials" rows="2" placeholder="e.g. 2x Heavy Brake Pads, 1x Rotor Disc, Synthetic Oil 5L"></textarea>
-        </div>
-        <div class="field">
-          <label for="repair-cost">Total Cost (₹) *</label>
-          <input type="number" step="0.01" id="repair-cost" required placeholder="0.00">
-        </div>
-        <div class="field">
-          <label for="repair-status">Status</label>
-          <select id="repair-status" class="input-select">
-            <option value="completed">Completed</option>
-            <option value="in-progress">In Progress</option>
-            <option value="pending">Pending</option>
-          </select>
-        </div>
-        <div class="field">
-          <label for="repair-photo">Attach Receipt / Material Photo</label>
-          <input type="file" id="repair-photo" accept="image/*" class="file-input">
-        </div>
-        <div class="modal-footer">
-          <button type="button" class="btn btn-ghost" onclick="closeModal('modal-add-repair')">Cancel</button>
-          <button type="submit" class="btn btn-amber">Save Repair</button>
-        </div>
-      </form>
-    </div>
-  </div>
-
-  <!-- Modal: Add / Edit / Delete Revenue -->
-  <div id="modal-add-revenue" class="modal-overlay hidden">
-    <div class="modal-card">
-      <h3 id="modal-revenue-title">Log Daily Revenue</h3>
-      <form id="form-add-revenue" onsubmit="handleAddRevenue(event)">
-        <input type="hidden" id="revenue-edit-id">
-        <div class="field">
-          <label for="revenue-date">Date *</label>
-          <input type="date" id="revenue-date" required>
-        </div>
-        <div class="field">
-          <label for="revenue-amount">Revenue Amount (₹) *</label>
-          <input type="number" step="0.01" id="revenue-amount" required placeholder="0.00">
-        </div>
-        <div class="field">
-          <label for="revenue-truck">Associated Truck (Optional)</label>
-          <select id="revenue-truck" class="input-select">
-            <option value="">-- All Fleet / General --</option>
-          </select>
-        </div>
-        <div class="field">
-          <label for="revenue-notes">Notes / Trip Details</label>
-          <input type="text" id="revenue-notes" placeholder="e.g. Bengaluru to Chennai freight transport">
-        </div>
-        <div class="modal-footer">
-          <button type="button" id="btn-delete-revenue" class="btn btn-ghost text-red hidden" onclick="handleDeleteRevenueFromModal()">Delete Entry</button>
-          <button type="button" class="btn btn-ghost" onclick="closeModal('modal-add-revenue')">Cancel</button>
-          <button type="submit" class="btn btn-amber">Save Revenue</button>
-        </div>
-      </form>
-    </div>
-  </div>
-
-  <!-- Photo Viewer Modal -->
-  <div id="modal-photo" class="modal-overlay hidden" onclick="closeModal('modal-photo')">
-    <div class="modal-photo-card" onclick="event.stopPropagation()">
-      <button class="close-btn" onclick="closeModal('modal-photo')">×</button>
-      <img id="modal-photo-img" src="" alt="Repair receipt photo">
-    </div>
-  </div>
-
+  <div id="modal-add-truck" class="modal-overlay hidden"><div class="modal-card"><h3 id="modal-truck-title">Add New Truck</h3><form id="form-add-truck" onsubmit="handleAddTruck(event)"><input type="hidden" id="truck-edit-id"><div class="field"><label for="truck-plate">License Plate / ID *</label><input type="text" id="truck-plate" required placeholder="e.g. KA-01-AB-1234"></div><div class="field"><label for="truck-model">Make / Model</label><input type="text" id="truck-model" placeholder="e.g. Volvo FH16"></div><div class="field"><label for="truck-year">Year</label><input type="number" id="truck-year" placeholder="2024"></div><div class="field"><label for="truck-owner-phone">Owner Phone Number</label><input type="tel" id="truck-owner-phone" placeholder="e.g. +91 98765 43210"></div><div class="field"><label for="truck-driver-phone">Driver Phone Number</label><input type="tel" id="truck-driver-phone" placeholder="e.g. +91 98765 12345"></div><div class="modal-footer"><button type="button" class="btn btn-ghost" onclick="closeModal('modal-add-truck')">Cancel</button><button type="submit" class="btn btn-amber">Save Truck</button></div></form></div></div>
+  <div id="modal-add-repair" class="modal-overlay hidden"><div class="modal-card"><h3 id="modal-repair-title">Log Repair Job</h3><form id="form-add-repair" onsubmit="handleAddRepair(event)"><input type="hidden" id="repair-edit-id"><div class="field"><label for="repair-date">Date *</label><input type="date" id="repair-date" required></div><div class="field"><label for="repair-desc">Description / Service *</label><input type="text" id="repair-desc" required placeholder="e.g. Brake pad & Rotor replacement"></div><div class="field"><label for="repair-materials">Materials & Parts Required</label><textarea id="repair-materials" rows="2"></textarea></div><div class="field"><label for="repair-cost">Total Cost (₹) *</label><input type="number" step="0.01" id="repair-cost" required></div><div class="field"><label for="repair-status">Status</label><select id="repair-status" class="input-select"><option value="completed">Completed</option><option value="in-progress">In Progress</option><option value="pending">Pending</option></select></div><div class="field"><label for="repair-photo">Attach Receipt / Material Photo</label><input type="file" id="repair-photo" accept="image/*" class="file-input"></div><div class="modal-footer"><button type="button" class="btn btn-ghost" onclick="closeModal('modal-add-repair')">Cancel</button><button type="submit" class="btn btn-amber">Save Repair</button></div></form></div></div>
+  <div id="modal-add-revenue" class="modal-overlay hidden"><div class="modal-card"><h3 id="modal-revenue-title">Log Daily Revenue</h3><form id="form-add-revenue" onsubmit="handleAddRevenue(event)"><input type="hidden" id="revenue-edit-id"><div class="field"><label for="revenue-date">Date *</label><input type="date" id="revenue-date" required></div><div class="field"><label for="revenue-amount">Revenue Amount (₹) *</label><input type="number" step="0.01" id="revenue-amount" required></div><div class="field"><label for="revenue-truck">Associated Truck (Optional)</label><select id="revenue-truck" class="input-select"><option value="">-- All Fleet / General --</option></select></div><div class="field"><label for="revenue-notes">Notes / Trip Details</label><input type="text" id="revenue-notes"></div><div class="modal-footer"><button type="button" id="btn-delete-revenue" class="btn btn-ghost text-red hidden" onclick="handleDeleteRevenueFromModal()">Delete Entry</button><button type="button" class="btn btn-ghost" onclick="closeModal('modal-add-revenue')">Cancel</button><button type="submit" class="btn btn-amber">Save Revenue</button></div></form></div></div>
+  <div id="modal-photo" class="modal-overlay hidden" onclick="closeModal('modal-photo')"><div class="modal-photo-card" onclick="event.stopPropagation()"><button class="close-btn" onclick="closeModal('modal-photo')">×</button><img id="modal-photo-img" src="" alt="Repair receipt photo"></div></div>
   <div id="toast-container"></div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="supabase-config.js"></script>
+  <script src="auth-login.js"></script>
   <script src="app.js"></script>
 </body>
 </html>
